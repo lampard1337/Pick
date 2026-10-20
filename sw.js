@@ -1,6 +1,6 @@
 // Service Worker: App-Dateien cachen, damit Pick schnell und offline startet.
 // Bei jeder Änderung an den Dateien VERSION hochzählen.
-const VERSION = 'pick-v9';
+const VERSION = 'pick-v11';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'config.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 

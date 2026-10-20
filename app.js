@@ -11,6 +11,9 @@
   const PLACE_EMOJI = ['🍽️','🛵','🌮','🥙','🍕','🍣','🍜','🍔','🍛','🥡','🍝','🥗','🍗','🍺','☕','🏮'];
   const CUISINES = ['Deutsch','Italienisch','Pizza','Mexikanisch','Türkisch','Griechisch','Asiatisch','Japanisch','Vietnamesisch','Thai','Chinesisch','Indisch','Burger','Amerikanisch','Spanisch','Levantinisch','Fastfood'];
   const EFFORT = { quick: 'Schnell', normal: 'Normal', long: 'Aufwendig' };
+  const TASTE = { savory: '🧂 Herzhaft', sweet: '🍰 Süß' };
+  // Ältere Einträge ohne Angabe: Stichwort "Süß" → süß, sonst herzhaft
+  const tasteOf = (it) => it.taste || ((it.tags || []).some(t => t.toLowerCase() === 'süß') ? 'sweet' : 'savory');
   const PLACE_TYPE = { restaurant: 'Restaurant', delivery: 'Lieferdienst' };
   // Zufall: was darf drankommen? (Standard: selbst kochen oder ins Restaurant)
   const MIX_KINDS = { dish: '🍳 Selbst kochen', restaurant: '🍽️ Restaurant', delivery: '🛵 Lieferdienst' };
@@ -86,6 +89,14 @@
     if (v) imgCache.set(id, v);
     return v;
   }
+  // Foto eines Eintrags: eigenes Foto (IndexedDB) oder fest eingebautes Beispielfoto
+  const hasPhoto = (it) => !!(it.photo || it.photoUrl);
+  function photoTag(it, extra = '') {
+    if (it.photo) return `<img class="ph" data-img="${esc(it.photo)}" alt="" ${extra}>`;
+    if (it.photoUrl && /^images\/[\w\/.-]+$/.test(it.photoUrl))
+      return `<img class="ph" src="${esc(it.photoUrl)}" alt="" ${extra} onload="this.classList.add('loaded')" onerror="this.remove()">`;
+    return '';
+  }
   // Bilder in gerendertem HTML nachladen
   async function hydrate(root = document) {
     for (const el of $$('img[data-img]', root)) {
@@ -113,6 +124,57 @@
     return out;
   }
 
+
+  // ---------- Beispiel-Inhalte ----------
+  // Fotos liegen fest in images/seed/ – fehlt eine Datei, zeigt die Karte einfach das Emoji.
+  const SEED = {
+    'Spaghetti Bolognese': { photoUrl: 'images/seed/bolognese.jpg',
+      ingredients: ['200 g Spaghetti', '250 g Rinderhackfleisch', '1 Zwiebel', '2 Knoblauchzehen', '1 Möhre', '1 EL Tomatenmark', '400 g passierte Tomaten', '1 TL getrockneter Oregano', '2 EL Olivenöl', 'Salz, Pfeffer', 'Parmesan zum Servieren'],
+      steps: ['Zwiebel, Knoblauch und Möhre fein würfeln.', 'Hackfleisch im Olivenöl krümelig anbraten, das Gemüse dazugeben und 3 Minuten mitbraten.', 'Tomatenmark kurz mitrösten, dann passierte Tomaten und Oregano dazugeben.', 'Die Soße 20 Minuten leise köcheln lassen und mit Salz und Pfeffer abschmecken.', 'Spaghetti in Salzwasser nach Packungsangabe kochen.', 'Nudeln abgießen, mit der Soße anrichten und Parmesan darüberreiben.'] },
+    'Chili con Carne': { photoUrl: 'images/seed/chili.jpg',
+      ingredients: ['250 g Rinderhackfleisch', '1 Zwiebel', '1 Knoblauchzehe', '1 rote Paprika', '1 Dose Kidneybohnen (400 g)', '1 kleine Dose Mais (140 g)', '400 g gehackte Tomaten', '1 EL Tomatenmark', '1 TL Kreuzkümmel', '1 TL Paprikapulver', '½ TL Chiliflocken', '1 EL Öl', 'Salz, Pfeffer'],
+      steps: ['Zwiebel, Knoblauch und Paprika würfeln.', 'Hackfleisch im Öl anbraten, Zwiebel und Knoblauch dazugeben.', 'Tomatenmark und Gewürze 1 Minute mitrösten.', 'Tomaten und Paprika dazugeben und 15 Minuten köcheln lassen.', 'Bohnen und Mais abspülen, unterrühren und weitere 10 Minuten köcheln.', 'Abschmecken und mit Reis, Brot oder einem Klecks Schmand servieren.'] },
+    'Hähnchen-Curry': { photoUrl: 'images/seed/curry.jpg',
+      ingredients: ['300 g Hähnchenbrust', '150 g Basmatireis', '400 ml Kokosmilch', '2 EL rote Currypaste', '1 rote Paprika', '1 Zwiebel', '1 Knoblauchzehe', '2 cm Ingwer', '1 EL Öl', '1 Spritzer Limettensaft', 'Koriander oder Frühlingszwiebeln', 'Salz'],
+      steps: ['Reis nach Packungsangabe kochen.', 'Hähnchen würfeln, Zwiebel, Knoblauch und Ingwer fein hacken, Paprika in Streifen schneiden.', 'Hähnchen im Öl rundum anbraten und herausnehmen.', 'Zwiebel, Knoblauch und Ingwer anschwitzen, Currypaste 1 Minute mitrösten.', 'Kokosmilch und Paprika dazugeben, 8 Minuten köcheln, dann das Hähnchen 5 Minuten mitziehen lassen.', 'Mit Limettensaft und Salz abschmecken und mit Reis und Kräutern servieren.'] },
+    'Ofengemüse mit Feta': { photoUrl: 'images/seed/ofengemuese.jpg',
+      ingredients: ['500 g kleine Kartoffeln', '1 Zucchini', '1 rote Paprika', '1 rote Zwiebel', '200 g Kirschtomaten', '200 g Feta', '3 EL Olivenöl', '1 TL getrockneter Thymian oder Rosmarin', 'Salz, Pfeffer'],
+      steps: ['Ofen auf 200 °C Umluft vorheizen.', 'Kartoffeln vierteln, das übrige Gemüse grob schneiden.', 'Alles mit Öl, Kräutern, Salz und Pfeffer mischen und auf einem Blech verteilen.', '25 Minuten backen.', 'Kirschtomaten und zerbröselten Feta darauf verteilen und weitere 10 Minuten backen.'] },
+    'Lasagne': { photoUrl: 'images/seed/lasagne.jpg',
+      ingredients: ['9 Lasagneplatten', '300 g Rinderhackfleisch', '1 Zwiebel', '1 Knoblauchzehe', '400 g passierte Tomaten', '1 EL Tomatenmark', '30 g Butter', '30 g Mehl', '400 ml Milch', '100 g geriebener Mozzarella', 'Muskat', 'Salz, Pfeffer'],
+      steps: ['Zwiebel und Knoblauch würfeln, mit dem Hack anbraten, Tomatenmark und Tomaten dazugeben, 15 Minuten köcheln und würzen.', 'Für die Béchamel Butter schmelzen, Mehl einrühren, Milch nach und nach unterrühren und 5 Minuten köcheln. Mit Salz, Pfeffer und Muskat würzen.', 'Ofen auf 180 °C Umluft vorheizen.', 'In eine Auflaufform schichten: etwas Soße, Platten, Hacksoße, Béchamel – insgesamt 3 Lagen.', 'Mit Béchamel und Käse abschließen und 35–40 Minuten backen.', 'Vor dem Anschneiden 10 Minuten ruhen lassen.'] },
+    'Wraps': { photoUrl: 'images/seed/wraps.jpg',
+      ingredients: ['4 Weizentortillas', '250 g Hähnchenbrust', '1 TL Paprikapulver', '½ Eisbergsalat', '2 Tomaten', '½ Gurke', '50 g geriebener Käse', '4 EL Knoblauch- oder Joghurtsoße', '1 EL Öl', 'Salz, Pfeffer'],
+      steps: ['Hähnchen in Streifen schneiden, mit Paprika, Salz und Pfeffer würzen und im Öl 6–8 Minuten braten.', 'Salat in Streifen schneiden, Tomaten und Gurke würfeln.', 'Tortillas kurz in der Pfanne oder Mikrowelle erwärmen.', 'Soße auf die Tortillas streichen, Salat, Gemüse, Hähnchen und Käse darauf verteilen und einrollen.'] },
+    'Kartoffelsuppe': { photoUrl: 'images/seed/kartoffelsuppe.jpg',
+      ingredients: ['600 g mehligkochende Kartoffeln', '1 Möhre', '1 Stück Lauch', '1 Zwiebel', '750 ml Gemüsebrühe', '100 ml Sahne', '1 EL Butter', '½ TL Majoran', 'Salz, Pfeffer, Muskat', 'Petersilie'],
+      steps: ['Kartoffeln und Möhre schälen und würfeln, Lauch in Ringe schneiden, Zwiebel würfeln.', 'Zwiebel und Lauch in der Butter andünsten.', 'Kartoffeln, Möhre, Brühe und Majoran dazugeben und 20 Minuten köcheln lassen.', 'Einen Teil oder alles pürieren und die Sahne einrühren.', 'Mit Salz, Pfeffer und Muskat abschmecken und mit Petersilie bestreuen.'] },
+    'Pfannkuchen': { photoUrl: 'images/seed/pfannkuchen.jpg',
+      ingredients: ['200 g Mehl', '2 Eier', '350 ml Milch', '1 EL Zucker', '1 Prise Salz', 'Butter zum Braten', 'Zucker & Zimt, Apfelmus oder Nuss-Nougat-Creme'],
+      steps: ['Mehl, Eier, Milch, Zucker und Salz glatt rühren und 10 Minuten quellen lassen.', 'Etwas Butter in einer Pfanne bei mittlerer Hitze schmelzen.', 'Eine Kelle Teig hineingeben, durch Schwenken verteilen und 1–2 Minuten backen, bis die Unterseite goldbraun ist.', 'Wenden, kurz fertig backen und warm mit dem Lieblingsbelag servieren.'] },
+    'Unser Mexikaner': { photoUrl: 'images/seed/mexikaner.jpg', hours: 'Di–So 17–23 Uhr', closed: [1],
+      note: 'Beispiel – tragt Adresse und Google-Maps-Link eures Lieblings-Mexikaners ein.' },
+    'Döner um die Ecke': { photoUrl: 'images/seed/doener.jpg', hours: 'Täglich 11–23 Uhr', note: 'Beispiel – Adresse ergänzen, dann gibt es Karte und Route.' },
+    'Pizza bestellen': { photoUrl: 'images/seed/pizza.jpg', hours: 'Täglich 17–22 Uhr', note: 'Beispiel – als Link die Seite eures Lieferdienstes eintragen.' },
+    'Sushi bestellen': { photoUrl: 'images/seed/sushi.jpg', hours: 'Di–So 17–22 Uhr', closed: [1], note: 'Beispiel – als Link die Seite eures Lieferdienstes eintragen.' },
+    'Der Inder': { photoUrl: 'images/seed/inder.jpg', hours: 'Täglich 12–14:30 und 17:30–22:30 Uhr', note: 'Beispiel – tipp auf Bearbeiten und trag die echte Adresse ein.' }
+  };
+  // Bestehende Beispiel-Karten nachträglich mit Rezepten und Fotos füllen
+  function fillExamples() {
+    let any = false;
+    for (const it of db.items) {
+      const extra = it.example && SEED[it.name];
+      if (!extra) continue;
+      let changed = false;
+      for (const [k, v] of Object.entries(extra)) {
+        const cur = it[k];
+        if (cur === undefined || cur === null || cur === '' || (Array.isArray(cur) && !cur.length)) { it[k] = v; changed = true; }
+      }
+      if (changed) { it.updatedAt = now(); markDirty(it.id); any = true; }
+    }
+    if (any) save();
+  }
+
   // ---------- Daten ----------
   function seed() {
     const t = now();
@@ -128,7 +190,7 @@
         d('Lasagne', '🫕', ['Hackfleisch', 'Nudeln', 'Käse', 'Ofen'], 'long'),
         d('Wraps', '🌯', ['Hähnchen', 'Salat', 'Soße'], 'quick'),
         d('Kartoffelsuppe', '🍲', ['Kartoffeln', 'Suppe', 'Vegetarisch'], 'normal'),
-        d('Pfannkuchen', '🥞', ['Süß', 'Vegetarisch'], 'quick'),
+        { ...d('Pfannkuchen', '🥞', ['Vegetarisch'], 'quick'), taste: 'sweet' },
         p('Unser Mexikaner', '🌮', 'Mexikanisch', 'restaurant'),
         p('Döner um die Ecke', '🥙', 'Türkisch', 'restaurant'),
         p('Pizza bestellen', '🍕', 'Pizza', 'delivery'),
@@ -151,6 +213,7 @@
     db.dirtyHist = Array.isArray(db.dirtyHist) ? db.dirtyHist : [];
     db.dirtyImg = Array.isArray(db.dirtyImg) ? db.dirtyImg : [];  // neue Fotos, noch nicht hochgeladen
     db.tomb = db.tomb && typeof db.tomb === 'object' ? db.tomb : {}; // gelöschte Einträge: id → {kind, at}
+    fillExamples();
   }
   function save() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); }
@@ -174,7 +237,7 @@
     listKind: 'dish',
     search: '',
     filter: {
-      dish: { tags: new Set(), effort: null },
+      dish: { tags: new Set(), effort: null, taste: null },
       place: { cuisines: new Set(), type: null },
       mix: { kinds: new Set(MIX_DEFAULT) }
     },
@@ -204,6 +267,7 @@
     if (it.kind === 'dish') {
       const f = state.filter.dish;
       if (f.effort && it.effort !== f.effort) return false;
+      if (f.taste && tasteOf(it) !== f.taste) return false;
       const tags = new Set((it.tags || []).map(t => t.toLowerCase()));
       for (const t of f.tags) if (!tags.has(t.toLowerCase())) return false;
       return true;
@@ -256,7 +320,7 @@
   }
   const resetDeck = (m = state.mode) => { state.deck[m] = null; if (m !== 'mix') state.deck.mix = null; };
   function defaultFilter(m) {
-    return m === 'dish' ? { tags: new Set(), effort: null }
+    return m === 'dish' ? { tags: new Set(), effort: null, taste: null }
       : m === 'place' ? { cuisines: new Set(), type: null }
       : { kinds: new Set(MIX_DEFAULT) };
   }
@@ -265,6 +329,7 @@
     const m = new Map();
     for (const it of items('dish')) for (const t of it.tags || []) {
       const k = t.toLowerCase();
+      if (k === 'süß' || k === 'herzhaft') continue;   // dafür gibt es den eigenen Geschmack-Filter
       const e = m.get(k) || { label: t, n: 0 }; e.n++; m.set(k, e);
     }
     return [...m.values()].sort((a, b) => b.n - a.n || a.label.localeCompare(b.label, 'de'));
@@ -280,7 +345,7 @@
       const same = f.kinds.size === MIX_DEFAULT.length && MIX_DEFAULT.every(k => f.kinds.has(k));
       return same ? 0 : f.kinds.size;
     }
-    return state.mode === 'dish' ? f.tags.size + (f.effort ? 1 : 0) : f.cuisines.size + (f.type ? 1 : 0);
+    return state.mode === 'dish' ? f.tags.size + (f.effort ? 1 : 0) + (f.taste ? 1 : 0) : f.cuisines.size + (f.type ? 1 : 0);
   }
 
   // ---------- Karten ----------
@@ -289,7 +354,7 @@
       if (it.kind === 'dish') return `🍳 Selbst kochen${it.effort === 'quick' ? ' · ⚡ Schnell' : ''}${it.fav ? ' · ★' : ''}`;
       return `${it.type === 'delivery' ? '🛵 Bestellen' : '🍽️ Essen gehen'}${it.fav ? ' · ★' : ''}`;
     }
-    if (it.kind === 'dish') return `${it.effort === 'quick' ? '⚡ ' : ''}${EFFORT[it.effort] || 'Gericht'}${it.fav ? ' · ★' : ''}`;
+    if (it.kind === 'dish') return `${it.effort === 'quick' ? '⚡ ' : ''}${EFFORT[it.effort] || 'Gericht'}${tasteOf(it) === 'sweet' ? ' · 🍰 Süß' : ''}${it.fav ? ' · ★' : ''}`;
     return `${it.type === 'delivery' ? '🛵' : '🍽️'} ${PLACE_TYPE[it.type] || 'Ort'}${it.fav ? ' · ★' : ''}`;
   }
   function metaLine(it) {
@@ -297,9 +362,9 @@
     return [it.cuisine, it.note].filter(Boolean).join(' · ');
   }
   function cardHTML(it, pos, chosen) {
-    return `<div class="card ${pos === 0 ? 'top' : 'pos-' + pos} ${it.photo ? 'has-photo' : ''} ${chosen ? 'chosen' : ''}" data-id="${it.id}" style="${grad(it.id)}">
+    return `<div class="card ${pos === 0 ? 'top' : 'pos-' + pos} ${hasPhoto(it) ? 'has-photo' : ''} ${chosen ? 'chosen' : ''}" data-id="${it.id}" style="${grad(it.id)}">
       <div class="emoji">${esc(it.emoji || '🍽️')}</div>
-      ${it.photo ? `<img class="ph" data-img="${esc(it.photo)}" alt="" draggable="false">` : ''}
+      ${photoTag(it, 'draggable="false"')}
       <div class="shade"></div>
       <span class="stamp yes">${chosen ? 'HEUTE!' : 'JA!'}</span><span class="stamp no">NÖ</span>
       <div class="info">
@@ -499,6 +564,8 @@
         `<button class="chip ${f.kinds.has(k) ? 'on' : ''}" data-f-kind="${k}">${v}</button>`).join('')}</div></div>`;
     } else if (isDish) {
       const f = state.filter.dish;
+      html += `<div class="field"><span class="lbl">Geschmack</span><div class="chips">${Object.entries(TASTE).map(([k, v]) =>
+        `<button class="chip ${f.taste === k ? 'on' : ''}" data-f-taste="${k}">${v}</button>`).join('')}</div></div>`;
       html += `<div class="field"><span class="lbl">Aufwand</span><div class="chips">${Object.entries(EFFORT).map(([k, v]) =>
         `<button class="chip ${f.effort === k ? 'on' : ''}" data-f-effort="${k}">${k === 'quick' ? '⚡ ' : ''}${v}</button>`).join('')}</div></div>`;
       const tags = tagStats();
@@ -540,7 +607,7 @@
     }
     el.innerHTML = list.map(i => `<li><button class="tile" data-detail="${i.id}" style="${grad(i.id)}">
       <span class="emoji">${esc(i.emoji || '🍽️')}</span>
-      ${i.photo ? `<img class="ph" data-img="${esc(i.photo)}" alt="">` : ''}
+      ${photoTag(i)}
       <span class="shade"></span>
       <span class="t-badges"><span>${i.example ? '<span class="mini">Beispiel</span>' : ''}${closedToday(i) ? '<span class="mini">Heute zu</span>' : ''}</span><span>${i.fav ? '<span class="mini">★</span>' : ''}</span></span>
       <span class="t-info"><span class="t-name">${esc(i.name)}</span><span class="t-sub">${esc(i.kind === 'dish' ? (i.tags || []).join(', ') || EFFORT[i.effort] || '' : [PLACE_TYPE[i.type], i.cuisine].filter(Boolean).join(', '))}</span></span>
@@ -604,6 +671,7 @@
     };
     for (const [k, v] of Object.entries({ ingredients: [], steps: [], address: '', mapsUrl: '', phone: '', hours: '', closed: [] }))
       if (draft[k] === undefined || draft[k] === null) draft[k] = v;
+    if (draft.kind === 'dish') draft.taste = tasteOf(draft);
     confirmDelete = false; sheetMode = 'edit'; newPhoto = null;
     renderSheet(false);
     openSheet();
@@ -620,11 +688,11 @@
       <h2 id="sheet-title">${isNew ? (isDish ? 'Neues Gericht' : 'Neuer Ort') : (isDish ? 'Gericht bearbeiten' : 'Ort bearbeiten')}</h2>
 
       <div class="field">
-        <label class="photo-pick ${d.photo ? 'has' : ''}">
-          ${d.photo ? `<img data-img="${esc(d.photo)}" alt="Foto">` : `<span><span class="cam">📷</span>${isDish ? 'Foto vom Gericht' : 'Foto vom Ort oder Essen'}<br><small>aufnehmen oder auswählen</small></span>`}
+        <label class="photo-pick ${hasPhoto(d) ? 'has' : ''}">
+          ${d.photo ? `<img data-img="${esc(d.photo)}" alt="Foto">` : d.photoUrl ? photoTag(d).replace('class="ph"', 'class="ph loaded"') : `<span><span class="cam">📷</span>${isDish ? 'Foto vom Gericht' : 'Foto vom Ort oder Essen'}<br><small>aufnehmen oder auswählen</small></span>`}
           <input type="file" accept="image/*" data-photo hidden>
         </label>
-        ${d.photo ? `<div class="photo-actions"><label class="btn btn-soft">Anderes Foto<input type="file" accept="image/*" data-photo hidden></label><button type="button" class="btn btn-soft" data-photo-remove>Foto entfernen</button></div>` : ''}
+        ${hasPhoto(d) ? `<div class="photo-actions"><label class="btn btn-soft">Anderes Foto<input type="file" accept="image/*" data-photo hidden></label><button type="button" class="btn btn-soft" data-photo-remove>Foto entfernen</button></div>` : ''}
         <button type="button" class="btn btn-soft ai-btn" data-ai-prompt>✨ Bild mit ChatGPT erstellen</button>
         <p class="ai-hint">Kopiert einen passenden Prompt und öffnet ChatGPT. Bild dort speichern und hier oben als Foto auswählen.</p>
       </div>
@@ -646,6 +714,10 @@
           <input id="f-tag" placeholder="${d.tags.length ? 'Weiteres …' : 'z. B. Hackfleisch, Knoblauch'}" enterkeyhint="done" autocomplete="off">
         </div>
         ${allTags.length ? `<div class="suggest">${allTags.map(t => `<button type="button" class="chip ghost" data-addtag="${esc(t)}">+ ${esc(t)}</button>`).join('')}</div>` : ''}
+      </div>
+      <div class="field">
+        <span class="lbl">Geschmack</span>
+        <div class="seg">${Object.entries(TASTE).map(([k, v]) => `<button type="button" class="seg-btn ${d.taste === k ? 'active' : ''}" data-set-taste="${k}">${v}</button>`).join('')}</div>
       </div>
       <div class="field">
         <span class="lbl">Aufwand</span>
@@ -856,9 +928,9 @@
     const it = byId(detailId); if (!it) return closeSheet();
     const isDish = it.kind === 'dish';
     const link = safeUrl(it.link);
-    const hero = `<div class="d-hero ${it.photo ? 'has-photo' : ''}" style="${grad(it.id)}">
+    const hero = `<div class="d-hero ${hasPhoto(it) ? 'has-photo' : ''}" style="${grad(it.id)}">
         <div class="emoji">${esc(it.emoji || '🍽️')}</div>
-        ${it.photo ? `<img class="ph" data-img="${esc(it.photo)}" alt="">` : ''}
+        ${photoTag(it)}
       </div>`;
     let body = '';
     if (isDish) {
@@ -968,8 +1040,10 @@
     const data = {
       name, emoji: draft.emoji, link: draft.link.trim(), note: draft.note.trim(), fav: !!draft.fav,
       photo: draft.photo || null,
+      photoUrl: draft.photo ? null : (draft.photoUrl || null),
       tags: draft.kind === 'dish' ? draft.tags : [],
       effort: draft.kind === 'dish' ? draft.effort : undefined,
+      taste: draft.kind === 'dish' ? draft.taste : undefined,
       type: draft.kind === 'place' ? draft.type : undefined,
       cuisine: draft.kind === 'place' ? normTag(draft.cuisine) : undefined,
       ingredients: draft.kind === 'dish' ? draft.ingredients : undefined,
@@ -1305,6 +1379,7 @@
         else f.kinds.add(ds.fKind);
         resetDeck(); return renderFilterSheet();
       }
+      if (ds.fTaste) { const f = state.filter.dish; f.taste = f.taste === ds.fTaste ? null : ds.fTaste; resetDeck(); return renderFilterSheet(); }
       if (ds.fEffort) { const f = state.filter.dish; f.effort = f.effort === ds.fEffort ? null : ds.fEffort; resetDeck(); return renderFilterSheet(); }
       if (ds.fTag) {
         const f = state.filter.dish, hit = [...f.tags].find(x => x.toLowerCase() === ds.fTag.toLowerCase());
@@ -1318,9 +1393,10 @@
       if (ds.untag !== undefined) { pullForm(); draft.tags.splice(+ds.untag, 1); return rerender(false, true); }
       if (ds.addtag) { pullForm(); addTags(ds.addtag); return rerender(false); }
       if (ds.setEffort) { pullForm(); draft.effort = ds.setEffort; return rerender(); }
+      if (ds.setTaste) { pullForm(); draft.taste = ds.setTaste; return rerender(); }
       if (ds.setType) { pullForm(); draft.type = ds.setType; return rerender(); }
       if (ds.setCuisine) { pullForm(); draft.cuisine = ds.setCuisine; return rerender(); }
-      if ('photoRemove' in ds) { pullForm(); draft.photo = null; return rerender(); }
+      if ('photoRemove' in ds) { pullForm(); draft.photo = null; draft.photoUrl = null; return rerender(); }
       if ('recipeAi' in ds) return openRecipeAi();
       if ('recipePaste' in ds) return pasteRecipe();
       if ('applyPaste' in ds) { pullForm(); return applyRecipe($('#f-paste')?.value || ''); }

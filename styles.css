@@ -329,3 +329,5 @@ textarea.input { min-height: 80px; resize: vertical; }
 .check-list li + li { border-top: 1px solid var(--line); }
 .check-list label { display: flex; align-items: center; gap: 12px; padding: 13px 16px; }
 .check-list input { width: 22px; height: 22px; accent-color: var(--yes); flex: none; }
+
+.photo-pick img.ph { opacity: 1; }
