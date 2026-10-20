@@ -522,3 +522,94 @@ body:not(.locked) .gate { display: none; }
 .status-shade { position: fixed; top: 0; left: 0; right: 0; height: var(--safe-t); z-index: 45; pointer-events: none;
   background: rgba(4, 28, 69, .9); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); }
 body.locked .status-shade { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* ---------- Pick-Duell ---------- */
+.round.duel-btn { color: var(--coral); }
+.round.duel-btn svg { stroke-width: 2.2; }
+.duel {
+  position: fixed; inset: 0; z-index: 55; background: var(--bg); overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 14px;
+  padding: calc(var(--safe-t) + 18px) max(16px, calc((100% - 520px) / 2 + 16px)) calc(var(--safe-b) + 22px);
+  animation: duelIn .3s cubic-bezier(.2,.9,.3,1);
+}
+.duel[hidden] { display: none; }
+@keyframes duelIn { from { opacity: 0; transform: translateY(24px); } }
+.duel-top { display: flex; align-items: center; gap: 12px; min-height: 48px; }
+.duel-title { font-family: var(--display); font-weight: 800; font-size: 28px; letter-spacing: -.03em; margin: 0; }
+.duel-sub, .duel-rule { margin: 0; color: var(--ink-2); }
+.duel-rule { font-size: 14px; text-align: center; }
+.duel-cta { margin-top: auto; }
+
+.duel-list, .duel-board { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.duel-row, .duel-res { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 10px; border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
+.duel-thumb { position: relative; flex: none; width: 56px; height: 56px; border-radius: 16px; overflow: hidden; display: grid; place-items: center; font-size: 30px; background: linear-gradient(160deg, var(--g1), var(--g2)); }
+.duel-thumb .ph { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .3s; }
+.duel-thumb .ph.loaded { opacity: 1; }
+.duel-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.duel-name b { font-family: var(--display); font-size: 18px; letter-spacing: -.02em; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.duel-name small { color: var(--ink-2); font-size: 13px; font-weight: 600; }
+.duel .icon-btn[disabled] { opacity: .35; }
+
+/* Bewerten */
+.duel-dots { flex: 1; display: flex; justify-content: center; gap: 6px; }
+.duel-dots i { width: 8px; height: 8px; border-radius: 4px; background: var(--line); transition: width .25s, background .25s; }
+.duel-dots i.done { background: var(--cyan); }
+.duel-dots i.on { width: 26px; background: var(--ink); }
+.duel-who { display: flex; align-items: center; gap: 6px; font-weight: 750; font-size: 15px; }
+.duel-card {
+  position: relative; flex: 1; min-height: 240px; max-height: 54svh; border-radius: 32px; overflow: hidden; color: #fff;
+  background: linear-gradient(160deg, var(--g1), var(--g2)); box-shadow: 0 24px 50px -22px rgba(4,28,69,.55);
+  animation: cardIn .35s ease both;
+}
+.duel-card .emoji { position: absolute; left: 0; right: 0; top: 12%; text-align: center; font-size: clamp(90px, 28vw, 140px); line-height: 1; filter: drop-shadow(0 22px 28px rgba(0,0,0,.28)); }
+.duel-card .ph { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .3s; }
+.duel-card .ph.loaded { opacity: 1; }
+.duel-card .shade { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(0,0,0,.6) 100%); }
+.duel-card:not(.has-photo) .shade { background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,.18) 100%); }
+.duel-card .info { position: absolute; left: 0; right: 0; bottom: 0; padding: 20px 22px 22px; }
+.duel-card h2 { font-family: var(--display); font-weight: 800; letter-spacing: -.035em; line-height: .98; font-size: clamp(28px, 9vw, 40px); margin: 8px 0 0; text-wrap: balance; }
+
+.duel-rate { padding: 4px 4px 0; }
+.duel-read { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.duel-face { font-size: 54px; line-height: 1; display: inline-block; }
+.duel-face.pop { animation: facePop .25s cubic-bezier(.3,1.6,.5,1); }
+@keyframes facePop { from { transform: scale(.7) rotate(-8deg); } }
+.duel-pct { font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: -.03em; min-width: 3.6em; }
+.duel-pct b { font-size: 48px; }
+#duel-range { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; margin: 10px 0 2px; background: transparent; touch-action: pan-y; }
+#duel-range::-webkit-slider-runnable-track { height: 14px; border-radius: 7px; background: linear-gradient(90deg, var(--coral), var(--cyan)) 0 / var(--v) 100% no-repeat, var(--surface-2); }
+#duel-range::-moz-range-track { height: 14px; border-radius: 7px; background: var(--surface-2); }
+#duel-range::-moz-range-progress { height: 14px; border-radius: 7px; background: linear-gradient(90deg, var(--coral), var(--cyan)); }
+#duel-range::-webkit-slider-thumb { -webkit-appearance: none; width: 38px; height: 38px; margin-top: -12px; border-radius: 50%; background: #fff; border: 4px solid var(--ink); box-shadow: 0 6px 16px -4px rgba(4,28,69,.5); }
+#duel-range::-moz-range-thumb { width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 4px solid var(--ink); }
+.duel-scale { display: flex; justify-content: space-between; font-size: 13px; font-weight: 650; color: var(--ink-2); }
+.duel-actions { display: flex; gap: 10px; }
+.duel-actions .btn { flex: 1; }
+.duel-actions .btn-soft { flex: 0 0 auto; }
+
+/* Handy weitergeben */
+.duel-hand { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; }
+.duel-hand .big { font-size: 88px; line-height: 1; animation: facePop .6s cubic-bezier(.3,1.6,.5,1); }
+.duel-hand h2 { font-family: var(--display); font-weight: 800; font-size: 32px; letter-spacing: -.03em; margin: 8px 0 0; text-wrap: balance; }
+.duel-hand p { margin: 0 0 18px; color: var(--ink-2); max-width: 30ch; }
+.duel-hand .btn { align-self: stretch; }
+
+/* Aufdecken */
+.duel-res { opacity: 0; transform: translateY(16px) scale(.97); transition: opacity .4s, transform .5s cubic-bezier(.2,1.4,.4,1), box-shadow .2s; }
+.duel-res.shown { opacity: 1; transform: none; }
+.duel-res.lot { box-shadow: 0 0 0 3px var(--coral), var(--shadow); }
+.duel-res.win.shown { box-shadow: 0 0 0 3px var(--cyan), 0 18px 40px -16px rgba(22,197,231,.7); }
+.duel-rank { flex: none; width: 22px; text-align: center; font-family: var(--display); font-weight: 800; color: var(--ink-2); }
+.duel-res.win .duel-rank { color: var(--cyan); }
+.duel-bar { display: block; height: 6px; border-radius: 3px; background: var(--surface-2); margin-top: 6px; overflow: hidden; }
+.duel-bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--coral), var(--cyan)); transition: width .8s cubic-bezier(.2,.9,.3,1) .15s; }
+.duel-res.shown .duel-bar i { width: var(--w); }
+.duel-score { flex: none; text-align: right; font-family: var(--display); font-weight: 800; font-size: 24px; letter-spacing: -.03em; line-height: 1; }
+.duel-score small { display: block; font-family: var(--body); font-size: 11px; font-weight: 650; color: var(--ink-2); letter-spacing: 0; }
+.duel-tie { margin: 0; text-align: center; font-weight: 750; color: var(--coral); }
+.duel-tie[hidden], .duel-final[hidden] { display: none; }
+.duel-final { margin-top: auto; display: flex; flex-direction: column; gap: 10px; text-align: center; animation: duelIn .5s cubic-bezier(.2,1.2,.4,1); }
+.duel-final h2 { font-family: var(--display); font-weight: 800; font-size: 30px; letter-spacing: -.03em; line-height: 1.05; margin: 6px 0 8px; }
+.duel-final h2 span { background: var(--brand-grad); -webkit-background-clip: text; background-clip: text; color: transparent; font-size: 1.25em; }
+.confetti { position: fixed; top: -14px; z-index: 56; width: 8px; height: 14px; border-radius: 2px; pointer-events: none; animation: confetti var(--d) cubic-bezier(.25,.6,.5,1) forwards; }
+@keyframes confetti { to { transform: translate(var(--x), 110vh) rotate(var(--r)); } }

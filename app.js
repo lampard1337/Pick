@@ -25,7 +25,9 @@
   ];
   const ICON_X = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
   const ICON_HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.2 3 4.5 6.6 4.5c2.1 0 3.6 1.2 4.4 2.5.8-1.3 2.3-2.5 4.4-2.5 3.6 0 5.7 3.7 4.2 7.2C19.5 16.4 12 21 12 21z"/></svg>';
-  const ICON_FILTER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>';
+  const ICON_DUEL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/><path d="M9.5 17.5 21 6V3h-3L6.5 14.5M11 19l-6-6M8 16l-4 4M5 21l-2-2"/></svg>';
+  const ICON_SWAP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3l4 4-4 4M21 7H9M7 21l-4-4 4-4M3 17h12"/></svg>';
+  const ICON_FILTER ='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>';
 
   // ---------- Hilfen ----------
   const $ = (s, el = document) => el.querySelector(s);
@@ -256,6 +258,9 @@
     if (!daily || daily.date !== todayKey()) {
       daily = { date: todayKey(), nopes: { dish: 0, place: 0, mix: 0 }, accepted: { dish: null, place: null, mix: null }, prev: {} };
     }
+    daily.seen ||= { dish: [], place: [], mix: [] };    // heute schon weggewischt (bleibt weg, auch nach Neustart)
+    daily.round ||= { dish: 0, place: 0, mix: 0 };      // wie oft heute "Neu mischen" gedrückt wurde
+    daily.final ||= {};                                  // per Duell entschieden → kein "Doch was anderes"
     state.accepted = daily.accepted;
   }
   function saveDaily() { try { localStorage.setItem(DAILY_KEY, JSON.stringify(daily)); } catch (_) {} }
@@ -293,16 +298,25 @@
     }
     return w;
   }
+  // Zufall, der den ganzen Tag gleich bleibt: dieselben Zutaten ergeben dieselbe Zahl (0..1).
+  // So mischt ein Neustart nicht neu – wer die nächste Karte schon gesehen hat, bekommt sie auch.
+  function dayRand(...parts) {
+    const s = [daily.date, ...parts].join('|');
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16;
+    return ((h >>> 0) + 0.5) / 4294967296;
+  }
   // gewichtetes Mischen: Favoriten und lange nicht Gegessenes eher vorne
-  function shuffle(list) {
-    return list.map(i => ({ id: i.id, k: Math.pow(Math.random(), 1 / weight(i)) }))
+  function shuffle(list, m = state.mode) {
+    return list.map(i => ({ id: i.id, k: Math.pow(dayRand(m, daily.round[m], i.id), 1 / weight(i)) }))
       .sort((a, b) => b.k - a.k).map(x => x.id);
   }
   function deck() {
     const m = state.mode;
-    const valid = new Set(pool(m).map(i => i.id));
-    if (!state.deck[m]) state.deck[m] = m === 'mix' ? shuffleMix(pool(m)) : shuffle(pool(m));
-    state.deck[m] = state.deck[m].filter(id => valid.has(id));
+    const valid = new Set(pool(m).map(i => i.id)), seen = new Set(daily.seen[m]);
+    if (!state.deck[m]) state.deck[m] = m === 'mix' ? shuffleMix(pool(m)) : shuffle(pool(m), m);
+    state.deck[m] = state.deck[m].filter(id => valid.has(id) && !seen.has(id));
     return state.deck[m];
   }
   // Zufall: jede Kartengruppe für sich mischen, dann per Münzwurf abwechselnd ziehen.
@@ -310,11 +324,11 @@
   function shuffleMix(list) {
     const groups = {};
     for (const it of list) (groups[mixKey(it)] ||= []).push(it);
-    const queues = Object.values(groups).map(shuffle);
+    const queues = Object.keys(groups).sort().map(k => shuffle(groups[k], 'mix'));
     const out = [];
     while (queues.some(q => q.length)) {
       const open = queues.filter(q => q.length);
-      out.push(open[Math.floor(Math.random() * open.length)].shift());
+      out.push(open[Math.floor(dayRand('mix', daily.round.mix, 'zug', out.length) * open.length)].shift());
     }
     return out;
   }
@@ -405,8 +419,9 @@
       const label = acc.kind === 'dish' ? 'Rezept öffnen' : (acc.type === 'delivery' ? 'Jetzt bestellen' : 'Route / Website');
       ctrl.innerHTML = `
         ${link ? `<a class="btn btn-primary" href="${esc(link)}" target="_blank" rel="noopener">${label}</a>` : ''}
-        ${nopesLeft() ? `<button class="btn btn-soft" data-undo>Doch was anderes (noch ${nopesLeft()}× Nö)</button>`
-                      : `<div class="hint">Entschieden ist entschieden. Morgen gibt's wieder neue Karten.</div>`}`;
+        ${daily.final[state.mode] ? `<div class="hint">🏆 Das Duell hat entschieden. Guten Appetit!</div>`
+          : nopesLeft() ? `<button class="btn btn-soft" data-undo>Doch was anderes (noch ${nopesLeft()}× Nö)</button>`
+          : `<div class="hint">Entschieden ist entschieden. Morgen gibt's wieder neue Karten.</div>`}`;
       hydrate(deckEl);
       return;
     }
@@ -436,6 +451,7 @@
       <button class="round no" data-nope aria-label="Nö, noch ${left} übrig" ${left ? '' : 'disabled'}>${ICON_X}<span class="badge">${left}</span></button>
       <button class="round yes" data-yes aria-label="Machen wir">${ICON_HEART}</button>
       ${filterBtn}
+      ${d.length >= 2 ? `<button class="round duel-btn" data-duel aria-label="Pick-Duell starten">${ICON_DUEL}</button>` : ''}
       ${hint}`;
     const top = $('.card.top', deckEl);
     if (top && !left) top.classList.add('final');
@@ -514,6 +530,7 @@
     state.deck[state.mode] = d.filter(x => x !== id);
     if (dir === 'right') return accept(id);
     daily.nopes[state.mode] = (daily.nopes[state.mode] || 0) + 1;
+    daily.seen[state.mode].push(id);
     saveDaily();
     renderToday();
   }
@@ -543,10 +560,186 @@
         db.dirtyHist = db.dirtyHist.filter(id => id !== prev.histId);
       }
     }
+    if (it) daily.seen[m].push(it.id);   // zählt als Nö: die Karte kommt heute nicht wieder
     state.accepted[m] = null; daily.prev[m] = null;
     daily.nopes[m] = (daily.nopes[m] || 0) + 1;
     saveDaily(); save();
     renderToday();
+  }
+
+  // ---------- Pick-Duell ----------
+  // 5 Picks, beide bewerten nacheinander blind in 10er-Schritten.
+  // Prozent hoch 1,5 = Punkte: Begeisterung zählt mehr (40 % + 100 % schlägt 70 % + 70 %).
+  // Gleichstand → höhere Einzelbewertung → Los. Es gibt immer einen Gewinner.
+  const DUEL_SIZE = 5;
+  const DUEL_FACES = ['🤢', '😖', '😣', '😕', '😐', '🙂', '😊', '😋', '😍', '🤤', '🤩'];
+  const duelPts = (r) => Math.round(100 * Math.pow(r / 100, 1.5));
+  let duel = null;
+  function duelNames() {
+    const p = partner();
+    return [me() ? nameOf(me()) : 'Spieler 1', p ? nameOf(p.email) : 'Spieler 2'];
+  }
+  const duelThumb = (it) => `<span class="duel-thumb ${hasPhoto(it) ? 'has-photo' : ''}" style="${grad(it.id)}"><span>${esc(it.emoji || '🍽️')}</span>${photoTag(it, 'draggable="false"')}</span>`;
+
+  function startDuel() {
+    const d = deck();
+    if (d.length < 2) return toast('Für ein Duell braucht ihr mindestens 2 Karten');
+    duel = { mode: state.mode, picks: d.slice(0, DUEL_SIZE), spare: d.slice(DUEL_SIZE), step: 'pick', player: 0, idx: 0, ratings: [[], []], timers: [] };
+    $('#duel').hidden = false;
+    document.body.style.overflow = 'hidden';
+    renderDuel();
+  }
+  function closeDuel() {
+    if (!duel) return;
+    duel.timers.forEach(clearTimeout);
+    duel = null;
+    $('#duel').hidden = true; $('#duel').innerHTML = '';
+    document.body.style.overflow = '';
+    renderToday();
+  }
+  function duelSwap(i) {
+    if (!duel.spare.length) return toast('Keine weiteren Karten zum Tauschen');
+    duel.spare.push(duel.picks[i]);
+    duel.picks[i] = duel.spare.shift();
+    buzz(8); renderDuel();
+  }
+  function duelNext() {
+    const v = +$('#duel-range').value;
+    duel.ratings[duel.player][duel.idx] = v;
+    buzz(12);
+    if (duel.idx < duel.picks.length - 1) { duel.idx++; return renderDuel(); }
+    if (duel.player === 0) { duel.step = 'handover'; return renderDuel(); }
+    finishDuel();
+  }
+  function finishDuel() {
+    const rows = duel.picks.map((id, i) => {
+      const a = duel.ratings[0][i], b = duel.ratings[1][i];
+      return { id, a, b, pts: duelPts(a) + duelPts(b), top: Math.max(a, b) };
+    }).sort((x, y) => y.pts - x.pts || y.top - x.top);
+    const tied = rows.filter(r => r.pts === rows[0].pts && r.top === rows[0].top);
+    const winner = tied[Math.floor(Math.random() * tied.length)];
+    rows.splice(rows.indexOf(winner), 1); rows.unshift(winner);   // Los-Gewinner nach oben
+    duel.result = { rows, tied: tied.length };
+    duel.step = 'reveal';
+    // Sofort festhalten – auch wenn die App beim Aufdecken geschlossen wird, ist entschieden
+    state.mode = duel.mode;
+    daily.final[duel.mode] = true;
+    accept(winner.id);
+    renderDuel();
+  }
+
+  function renderDuel() {
+    const el = $('#duel'), names = duelNames();
+    const close = `<button class="icon-btn duel-x" data-duel-close aria-label="Duell schließen">${ICON_X}</button>`;
+    if (duel.step === 'pick') {
+      el.innerHTML = `
+        <div class="duel-top">${close}<h2 class="duel-title">Pick-Duell</h2></div>
+        <p class="duel-sub">Eure ${duel.picks.length} Picks. Einer gefällt dir gar nicht? Tausch ihn aus.</p>
+        <ul class="duel-list">${duel.picks.map((id, i) => { const it = byId(id); return `
+          <li class="duel-row">${duelThumb(it)}
+            <span class="duel-name"><b>${esc(it.name)}</b><small>${esc(kicker(it))}</small></span>
+            <button class="icon-btn" data-duel-swap="${i}" aria-label="${esc(it.name)} austauschen" ${duel.spare.length ? '' : 'disabled'}>${ICON_SWAP}</button>
+          </li>`; }).join('')}</ul>
+        <p class="duel-rule">Ihr bewertet beide blind von 0 bis 100 %. Begeisterung zählt mehr – und am Ende gewinnt immer einer.</p>
+        <button class="btn btn-primary duel-cta" data-duel-go>Los geht's – ${esc(names[0])} fängt an</button>`;
+    } else if (duel.step === 'rate') {
+      const it = byId(duel.picks[duel.idx]), last = duel.idx === duel.picks.length - 1;
+      const v = duel.ratings[duel.player][duel.idx] ?? 50;
+      el.innerHTML = `
+        <div class="duel-top">${close}
+          <div class="duel-dots" aria-label="Pick ${duel.idx + 1} von ${duel.picks.length}">${duel.picks.map((_, i) => `<i class="${i < duel.idx ? 'done' : i === duel.idx ? 'on' : ''}"></i>`).join('')}</div>
+          <span class="duel-who">${avatar(duel.player === 0 ? me() : partner()?.email) || ''}${esc(names[duel.player])}</span>
+        </div>
+        <div class="duel-card ${hasPhoto(it) ? 'has-photo' : ''}" style="${grad(it.id)}">
+          <div class="emoji">${esc(it.emoji || '🍽️')}</div>
+          ${photoTag(it, 'draggable="false"')}
+          <div class="shade"></div>
+          <div class="info"><span class="kicker">${esc(kicker(it))}</span><h2>${esc(it.name)}</h2></div>
+        </div>
+        <div class="duel-rate">
+          <div class="duel-read"><span class="duel-face" id="duel-face">${DUEL_FACES[v / 10]}</span><span class="duel-pct"><b id="duel-pct">${v}</b> %</span></div>
+          <input type="range" id="duel-range" min="0" max="100" step="10" value="${v}" style="--v:${v}%" aria-label="Wie sehr willst du ${esc(it.name)}? In Prozent">
+          <div class="duel-scale" aria-hidden="true"><span>gar nicht</span><span>unbedingt</span></div>
+        </div>
+        <div class="duel-actions">
+          ${duel.idx ? `<button class="btn btn-soft" data-duel-back>Zurück</button>` : ''}
+          <button class="btn btn-primary" data-duel-next>${last ? (duel.player === 0 ? 'Fertig' : 'Aufdecken!') : 'Weiter'}</button>
+        </div>`;
+    } else if (duel.step === 'handover') {
+      el.innerHTML = `
+        <div class="duel-top">${close}</div>
+        <div class="duel-hand">
+          <div class="big">🤫</div>
+          <h2>Gib das Handy an ${esc(names[1])}</h2>
+          <p>${esc(names[0])}s Bewertungen bleiben geheim, bis ihr beide fertig seid.</p>
+          <button class="btn btn-primary duel-cta" data-duel-ready>Ich bin ${esc(names[1])} – los!</button>
+        </div>`;
+    } else {
+      renderReveal(el, names);
+    }
+    hydrate(el);
+    $('.btn-primary', el)?.focus({ preventScroll: true });
+  }
+
+  function renderReveal(el, names) {
+    const { rows, tied } = duel.result, win = byId(rows[0].id);
+    const link = safeUrl(win.link);
+    const label = win.kind === 'dish' ? 'Rezept öffnen' : (win.type === 'delivery' ? 'Jetzt bestellen' : 'Route / Website');
+    el.innerHTML = `
+      <div class="duel-top">${close()}<h2 class="duel-title">Aufdecken</h2></div>
+      <ol class="duel-board">${rows.map((r, i) => { const it = byId(r.id); return `
+        <li class="duel-res ${i === 0 && tied < 2 ? 'win' : ''}">
+          <span class="duel-rank">${i < tied ? 1 : i + 1}</span>${duelThumb(it)}
+          <span class="duel-name"><b>${esc(it.name)}</b>
+            <small>${esc(names[0])}&nbsp;${r.a}&nbsp;% · ${esc(names[1])}&nbsp;${r.b}&nbsp;%</small>
+            <span class="duel-bar"><i style="--w:${r.pts / 2}%"></i></span></span>
+          <span class="duel-score">${r.pts}<small>Punkte</small></span>
+        </li>`; }).join('')}</ol>
+      <p class="duel-tie" hidden>Gleichstand! Das Los entscheidet …</p>
+      <div class="duel-final" hidden>
+        <h2>Heute gibt's<br><span>${esc(win.name)}</span> ${esc(win.emoji || '')}</h2>
+        ${link ? `<a class="btn btn-primary" href="${esc(link)}" target="_blank" rel="noopener">${label}</a>` : ''}
+        <button class="btn btn-soft" data-duel-close>Fertig</button>
+      </div>`;
+    function close() { return `<button class="icon-btn duel-x" data-duel-close aria-label="Duell schließen">${ICON_X}</button>`; }
+
+    // Von hinten nach vorne aufdecken, bei Gleichstand kurz losen, dann Konfetti
+    const items = $$('.duel-res', el), fast = reduced();
+    const at = (ms, fn) => duel.timers.push(setTimeout(fn, fast ? 0 : ms));
+    let t = 300;
+    for (let i = items.length - 1; i >= 0; i--, t += 750) {
+      const li = items[i];
+      at(t, () => { li.classList.add('shown'); buzz(i === 0 ? [20, 40, 30] : 8); });
+    }
+    if (tied > 1) {
+      const pool = items.slice(0, tied);
+      at(t, () => { $('.duel-tie', el).hidden = false; });
+      for (let k = 0; k < 12; k++) at(t + 200 + k * (90 + k * 12), () => {
+        pool.forEach(li => li.classList.remove('lot'));
+        pool[k === 11 ? 0 : k % pool.length].classList.add('lot'); buzz(5);
+      });
+      t += 2400;
+      at(t - 200, () => {
+        pool[0].classList.remove('lot'); pool[0].classList.add('win');
+        pool.slice(1).forEach((li, i) => { $('.duel-rank', li).textContent = i + 2; });
+      });
+    }
+    at(t, () => {
+      $('.duel-final', el).hidden = false;
+      confetti(el);
+      $('.duel-final .btn', el)?.focus({ preventScroll: true });
+    });
+  }
+  function confetti(root) {
+    if (reduced()) return;
+    const colors = ['#7AF0D7', '#16C5E7', '#FF7C6C', '#FFD9CB', '#1E5AB1', '#FFFFFF'];
+    for (let i = 0; i < 70; i++) {
+      const c = document.createElement('i');
+      c.className = 'confetti';
+      c.style.cssText = `left:${Math.random() * 100}%;background:${colors[i % colors.length]};--x:${(Math.random() - .5) * 160}px;--r:${Math.random() * 900 - 450}deg;--d:${1.6 + Math.random() * 1.4}s;animation-delay:${Math.random() * .35}s`;
+      root.appendChild(c);
+      setTimeout(() => c.remove(), 3600);
+    }
   }
 
   // ---------- Filter-Sheet ----------
@@ -1854,6 +2047,18 @@
     if (!t) { if (e.target.id === 'backdrop') closeSheet(); return; }
     const ds = t.dataset;
 
+    // Pick-Duell
+    if (t.closest('#duel')) {
+      if ('duelClose' in ds) return closeDuel();
+      if (ds.duelSwap !== undefined) return duelSwap(+ds.duelSwap);
+      if ('duelGo' in ds) { duel.step = 'rate'; duel.player = 0; duel.idx = 0; return renderDuel(); }
+      if ('duelReady' in ds) { duel.step = 'rate'; duel.player = 1; duel.idx = 0; return renderDuel(); }
+      if ('duelNext' in ds) return duelNext();
+      if ('duelBack' in ds) { duel.ratings[duel.player][duel.idx] = +$('#duel-range').value; duel.idx--; return renderDuel(); }
+      return;
+    }
+    if ('duel' in ds) return startDuel();
+
     // Navigation & Modus
     if (ds.view) return show(ds.view);
     if (ds.soon) return toast(`${ds.soon} kommt bald 🙂`);
@@ -1929,7 +2134,10 @@
     if ('nope' in ds) return fly($('.card.top'), 'left');
     if ('yes' in ds) return fly($('.card.top'), 'right');
     if ('filter' in ds) return openFilter();
-    if ('reshuffle' in ds) { resetDeck(); return renderToday(); }
+    if ('reshuffle' in ds) {
+      daily.round[state.mode]++; daily.seen[state.mode] = []; saveDaily();
+      resetDeck(); return renderToday();
+    }
     if ('undo' in ds) return undoAccept();
     if ('reset' in ds) {
       state.filter[state.mode] = defaultFilter(state.mode);
@@ -2000,8 +2208,9 @@
       e.preventDefault(); doLogin();
     } else if (e.key === 'Enter' && e.target.id === 'td-title') {
       e.preventDefault(); saveTask();
-    } else if (e.key === 'Escape' && sheetMode) closeSheet();
-    else if (state.view === 'today' && !sheetMode && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+    } else if (e.key === 'Escape' && duel) closeDuel();
+    else if (e.key === 'Escape' && sheetMode) closeSheet();
+    else if (state.view === 'today' && !sheetMode && !duel && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
       fly($('.card.top'), e.key === 'ArrowRight' ? 'right' : 'left');
     }
   });
@@ -2021,6 +2230,16 @@
     if (e.target.matches('[data-photo]') && e.target.files[0]) onPhoto(e.target.files[0]);
   });
   $('#search').addEventListener('input', (e) => { state.search = e.target.value; renderList(); });
+  $('#duel').addEventListener('input', (e) => {
+    if (e.target.id !== 'duel-range') return;
+    const v = +e.target.value;
+    e.target.style.setProperty('--v', v + '%');
+    $('#duel-pct').textContent = v;
+    const face = $('#duel-face');
+    face.textContent = DUEL_FACES[v / 10];
+    face.classList.remove('pop'); void face.offsetWidth; face.classList.add('pop');
+    buzz(6);
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     const before = daily.date; checkDay(); if (daily.date !== before) renderAll();
