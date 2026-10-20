@@ -978,25 +978,109 @@
     hydrate($('#sheet'));
   }
 
-  // ---------- Einkaufsliste ----------
+  // ---------- Einkaufsliste (im Stil von Bring) ----------
+  // Katalog: Name, Emoji, Kategorie. Reihenfolge der Kategorien = Weg durch den Supermarkt.
+  const SHOP_CATS = ['Obst & Gemüse', 'Brot & Backwaren', 'Milch & Käse', 'Fleisch & Fisch', 'Nudeln, Reis & Co.',
+    'Zutaten & Gewürze', 'Konserven & Soßen', 'Tiefkühl', 'Snacks & Süßes', 'Getränke', 'Haushalt', 'Pflege', 'Sonstiges'];
+  const CATALOG = [
+    ['Äpfel','🍎',0],['Bananen','🍌',0],['Zitronen','🍋',0],['Limetten','🍋',0],['Orangen','🍊',0],['Trauben','🍇',0],['Erdbeeren','🍓',0],
+    ['Avocado','🥑',0],['Tomaten','🍅',0],['Kirschtomaten','🍅',0],['Gurke','🥒',0],['Paprika','🫑',0],['Zucchini','🥒',0],['Aubergine','🍆',0],
+    ['Möhren','🥕',0],['Kartoffeln','🥔',0],['Süßkartoffeln','🍠',0],['Zwiebeln','🧅',0],['Rote Zwiebeln','🧅',0],['Knoblauch','🧄',0],
+    ['Ingwer','🫚',0],['Lauch','🥬',0],['Salat','🥬',0],['Eisbergsalat','🥬',0],['Spinat','🥬',0],['Brokkoli','🥦',0],['Blumenkohl','🥦',0],
+    ['Pilze','🍄',0],['Champignons','🍄',0],['Mais','🌽',0],['Frühlingszwiebeln','🧅',0],['Petersilie','🌿',0],['Basilikum','🌿',0],['Koriander','🌿',0],
+    ['Chili','🌶️',0],['Kräuter','🌿',0],
+    ['Brot','🍞',1],['Brötchen','🥖',1],['Toast','🍞',1],['Baguette','🥖',1],['Tortillas','🫓',1],['Wraps','🫓',1],['Naan','🫓',1],['Croissants','🥐',1],
+    ['Milch','🥛',2],['Butter','🧈',2],['Sahne','🥛',2],['Schmand','🥛',2],['Joghurt','🥛',2],['Quark','🥛',2],['Eier','🥚',2],
+    ['Käse','🧀',2],['Gouda','🧀',2],['Mozzarella','🧀',2],['Parmesan','🧀',2],['Feta','🧀',2],['Frischkäse','🧀',2],['Reibekäse','🧀',2],
+    ['Hackfleisch','🥩',3],['Rinderhack','🥩',3],['Rindfleisch','🥩',3],['Gulasch','🥩',3],['Hähnchen','🍗',3],['Hähnchenbrust','🍗',3],
+    ['Schnitzel','🥩',3],['Wurst','🌭',3],['Schinken','🥓',3],['Speck','🥓',3],['Salami','🍕',3],['Lachs','🐟',3],['Fisch','🐟',3],['Garnelen','🍤',3],
+    ['Spaghetti','🍝',4],['Nudeln','🍝',4],['Lasagneplatten','🍝',4],['Reis','🍚',4],['Basmatireis','🍚',4],['Couscous','🍚',4],['Haferflocken','🥣',4],['Müsli','🥣',4],
+    ['Mehl','🌾',5],['Zucker','🍬',5],['Salz','🧂',5],['Pfeffer','🧂',5],['Paprikapulver','🌶️',5],['Currypaste','🍛',5],['Kreuzkümmel','🧂',5],
+    ['Oregano','🌿',5],['Zimt','🧂',5],['Öl','🫒',5],['Olivenöl','🫒',5],['Essig','🫙',5],['Brühe','🥣',5],['Gemüsebrühe','🥣',5],['Senf','🫙',5],['Honig','🍯',5],
+    ['Passierte Tomaten','🥫',6],['Gehackte Tomaten','🥫',6],['Tomatenmark','🥫',6],['Kokosmilch','🥥',6],['Kidneybohnen','🫘',6],['Bohnen','🫘',6],
+    ['Kichererbsen','🫘',6],['Ketchup','🥫',6],['Mayo','🫙',6],['Sojasoße','🫙',6],['Pesto','🫙',6],['Marmelade','🍓',6],['Nutella','🍫',6],['Apfelmus','🍎',6],
+    ['Pizza','🍕',7],['Pommes','🍟',7],['Eis','🍨',7],['TK-Gemüse','🥦',7],['Spinat (TK)','🥬',7],
+    ['Chips','🥔',8],['Schokolade','🍫',8],['Kekse','🍪',8],['Gummibärchen','🍬',8],['Nüsse','🥜',8],
+    ['Wasser','💧',9],['Sprudel','💧',9],['Saft','🧃',9],['Cola','🥤',9],['Kaffee','☕',9],['Tee','🍵',9],['Bier','🍺',9],['Wein','🍷',9],
+    ['Toilettenpapier','🧻',10],['Klopapier','🧻',10],['Spüli','🧽',10],['Küchenrolle','🧻',10],['Spülmittel','🧽',10],['Spülmaschinentabs','🧽',10],['Waschmittel','🧺',10],['Müllbeutel','🗑️',10],['Alufolie','🧻',10],['Backpapier','🧻',10],
+    ['Zahnpasta','🪥',11],['Duschgel','🧴',11],['Shampoo','🧴',11],['Deo','🧴',11],['Taschentücher','🤧',11]
+  ].map(([name, emoji, c]) => ({ name, emoji, cat: SHOP_CATS[c] }));
+  const KEYWORDS = [  // Teilwörter für eigene Artikel ohne Katalog-Treffer
+    ['hack', '🥩', 3], ['rind', '🥩', 3], ['schwein', '🥩', 3], ['hähnchen', '🍗', 3], ['huhn', '🍗', 3], ['fisch', '🐟', 3],
+    ['käse', '🧀', 2], ['milch', '🥛', 2], ['joghurt', '🥛', 2], ['sahne', '🥛', 2],
+    ['tomate', '🍅', 0], ['zwiebel', '🧅', 0], ['knoblauch', '🧄', 0], ['kartoffel', '🥔', 0], ['paprika', '🫑', 0], ['salat', '🥬', 0], ['apfel', '🍎', 0], ['pilz', '🍄', 0],
+    ['brot', '🍞', 1], ['brötchen', '🥖', 1], ['nudel', '🍝', 4], ['reis', '🍚', 4],
+    ['öl', '🫒', 5], ['gewürz', '🧂', 5], ['pulver', '🧂', 5], ['soße', '🫙', 6], ['sauce', '🫙', 6], ['dose', '🥫', 6],
+    ['saft', '🧃', 9], ['wasser', '💧', 9], ['schoko', '🍫', 8], ['tk', '🧊', 7]
+  ];
+  const norm = (x) => String(x || '').toLowerCase().trim();
+  function lookup(name) {
+    const n = norm(name);
+    let hit = CATALOG.find(c => norm(c.name) === n);
+    if (!hit) hit = CATALOG.filter(c => n.includes(norm(c.name)) && norm(c.name).length >= 3).sort((a, b) => b.name.length - a.name.length)[0];
+    if (hit) return { emoji: hit.emoji, cat: hit.cat };
+    const k = KEYWORDS.find(([w]) => n.includes(w));
+    return k ? { emoji: k[1], cat: SHOP_CATS[k[2]] } : { emoji: '🛒', cat: 'Sonstiges' };
+  }
+  const shopEmoji = (i) => i.emoji || lookup(i.name).emoji;
+  const shopCat = (i) => i.cat || lookup(i.name).cat;
+
+  // "500 g Rindergulasch" → { name: "Rindergulasch", spec: "500 g" }
+  const UNITS = 'kg|g|mg|l|ml|cl|EL|TL|Msp\\.?|Prise[n]?|Dose[n]?|kleine Dose|große Dose|Bund|Stück|Stk\\.?|Pck\\.?|Packung(?:en)?|Päckchen|Becher|Glas|Gläser|Zehe[n]?|Scheibe[n]?|cm|Tasse[n]?|Handvoll|Spritzer|Kopf|Köpfe';
+  const QTY = '(?:\\d+(?:[.,]\\d+)?|[½¼¾⅓⅔])(?:\\s*[-–\\/]\\s*\\d+(?:[.,]\\d+)?)?';
+  const ING_RE = new RegExp(`^(${QTY})?\\s*(?:(${UNITS})\\b\\.?)?\\s*(.+)$`, 'i');
+  function parseIngredient(line) {
+    let text = String(line).trim().replace(/\s+zum\s+\w+$/i, '').replace(/\s+(?:nach Belieben|optional)$/i, '');
+    const m = text.match(ING_RE);
+    let spec = '', name = text;
+    if (m && (m[1] || m[2])) { spec = [m[1], m[2]].filter(Boolean).join(' '); name = m[3]; }
+    const paren = name.match(/\s*\(([^)]*)\)\s*$/);
+    if (paren) { spec = spec ? `${spec} (${paren[1]})` : paren[1]; name = name.slice(0, paren.index); }
+    name = name.trim();
+    // "Salz, Pfeffer" → zwei Artikel
+    if (!spec && /,/.test(name) && !/\boder\b/i.test(name)) return name.split(/\s*,\s*/).filter(Boolean).map(n => ({ name: cap(n), spec: '' }));
+    return [{ name: cap(name), spec }];
+  }
+  const STAPLES = ['salz', 'pfeffer', 'öl', 'olivenöl', 'wasser'];
+
   const shopItems = () => items('shop');
-  const shopOpenCount = () => shopItems().filter(i => !i.done).length;
-  function addShop(text, from) {
-    text = String(text).trim(); if (!text) return false;
-    if (shopItems().some(i => !i.done && i.name.toLowerCase() === text.toLowerCase())) return false;
-    const id = uid();
-    db.items.push({ id, kind: 'shop', name: text, done: false, from: from || '', createdAt: now(), updatedAt: now() });
-    markDirty(id);
+  const shopOpen = () => shopItems().filter(i => !i.done);
+  const shopOpenCount = () => shopOpen().length;
+  const findShop = (name) => shopItems().find(i => norm(i.name) === norm(name));
+  // Fügt hinzu oder holt einen bekannten Artikel zurück auf die Liste
+  function addShop(name, spec = '', from = '') {
+    name = cap(String(name).trim()); if (!name) return false;
+    const ex = findShop(name);
+    if (ex && !ex.done) {
+      if (spec && ex.spec !== spec) { ex.spec = ex.spec ? `${ex.spec} + ${spec}` : spec; ex.updatedAt = now(); markDirty(ex.id); }
+      return false;
+    }
+    const meta = lookup(name);
+    if (ex) {
+      Object.assign(ex, { done: false, spec, from, emoji: ex.emoji || meta.emoji, cat: ex.cat || meta.cat, addedBy: auth?.email || '', updatedAt: now() });
+      markDirty(ex.id);
+    } else {
+      const id = uid();
+      db.items.push({ id, kind: 'shop', name, spec, from, emoji: meta.emoji, cat: meta.cat, done: false, addedBy: auth?.email || '', createdAt: now(), updatedAt: now() });
+      markDirty(id);
+    }
     return true;
   }
+
   function openShopAdd(id) {
     const it = byId(id); if (!it) return;
     sheetMode = 'shopadd'; detailId = id;
+    const list = (it.ingredients || []).flatMap(parseIngredient);
     $('#sheet').innerHTML = `
       <div class="grabber"></div>
       <h2 id="sheet-title">Auf die Einkaufsliste</h2>
       <p class="note">Haken raus bei allem, was ihr schon zu Hause habt.</p>
-      <ul class="check-list">${(it.ingredients || []).map((x, i) => `<li><label><input type="checkbox" data-ingr="${i}" checked><span>${esc(x)}</span></label></li>`).join('')}</ul>
+      <ul class="check-list">${list.map((x, i) => {
+        const onList = findShop(x.name) && !findShop(x.name).done;
+        const staple = STAPLES.includes(norm(x.name));
+        return `<li><label><input type="checkbox" data-ingr="${i}" data-name="${esc(x.name)}" data-spec="${esc(x.spec)}" ${staple || onList ? '' : 'checked'}>
+          <span class="ci-emoji">${lookup(x.name).emoji}</span><span class="ci-txt">${esc(x.name)}${x.spec ? `<small>${esc(x.spec)}</small>` : ''}${onList ? '<small>steht schon drauf</small>' : ''}</span></label></li>`;
+      }).join('')}</ul>
       <div class="sheet-actions">
         <button class="btn btn-primary" data-shop-confirm>Hinzufügen</button>
         <button class="btn btn-soft" data-detail-back>Zurück</button>
@@ -1006,32 +1090,128 @@
   function confirmShopAdd() {
     const it = byId(detailId); if (!it) return closeSheet();
     let n = 0;
-    $$('#sheet [data-ingr]').forEach(cb => { if (cb.checked && addShop(it.ingredients[+cb.dataset.ingr], it.name)) n++; });
+    $$('#sheet [data-ingr]').forEach(cb => { if (cb.checked && addShop(cb.dataset.name, cb.dataset.spec, it.name)) n++; });
     save(); updateShopBadge();
-    toast(n ? `${n} ${n === 1 ? 'Zutat' : 'Zutaten'} auf der Einkaufsliste` : 'Stand schon alles auf der Liste');
+    toast(n ? `${n} ${n === 1 ? 'Artikel' : 'Artikel'} auf der Einkaufsliste` : 'Stand schon alles auf der Liste');
     openDetail(it.id);
   }
+
+  // Bearbeiten (lange drücken)
+  function openShopEdit(id) {
+    const it = byId(id); if (!it) return;
+    sheetMode = 'shopedit'; detailId = id;
+    $('#sheet').innerHTML = `
+      <div class="grabber"></div>
+      <h2 id="sheet-title"><span class="se-emoji">${shopEmoji(it)}</span> ${esc(it.name)}</h2>
+      <div class="field"><label for="se-spec">Menge / Hinweis</label>
+        <input class="input" id="se-spec" value="${esc(it.spec || '')}" placeholder="z. B. 500 g, 2 Stück, die große Packung" autocomplete="off"></div>
+      <div class="field"><label for="se-name">Name</label>
+        <input class="input" id="se-name" value="${esc(it.name)}" autocomplete="off"></div>
+      ${it.from ? `<p class="note">Für: ${esc(it.from)}</p>` : ''}
+      <div class="sheet-actions">
+        <button class="btn btn-primary" data-shop-save>Speichern</button>
+        ${it.done ? '' : '<button class="btn btn-soft" data-shop-buy-sheet>Gekauft</button>'}
+        <button class="btn btn-danger" data-shop-delete>Ganz entfernen</button>
+      </div>`;
+    openSheet();
+    setTimeout(() => $('#se-spec')?.focus(), 250);
+  }
+  function saveShopEdit() {
+    const it = byId(detailId); if (!it) return closeSheet();
+    const name = cap($('#se-name').value.trim());
+    if (name && name !== it.name) { const m = lookup(name); it.name = name; it.emoji = m.emoji; it.cat = m.cat; }
+    it.spec = $('#se-spec').value.trim(); it.updatedAt = now(); markDirty(it.id);
+    save(); closeSheet(); renderShop();
+  }
+
+  function buyShop(id, tile) {
+    const it = byId(id); if (!it) return;
+    it.done = true; it.updatedAt = now(); markDirty(it.id); save(); buzz(10);   // Menge bleibt für Rückgängig; beim erneuten Hinzufügen wird sie zurückgesetzt
+    const go = () => { renderShop(); updateShopBadge(); };
+    if (tile && !reduced()) { tile.classList.add('bought'); setTimeout(go, 220); } else go();
+    shopUndo = id; toast(`${it.name} gekauft`, 'Rückgängig');
+  }
+  let shopUndo = null;
+  function undoBuy() {
+    const it = byId(shopUndo); shopUndo = null; if (!it) return;
+    it.done = false; it.updatedAt = now(); markDirty(it.id); save(); renderShop(); updateShopBadge();
+  }
+
+  // Aufbau: Eingabefeld bleibt stehen, nur der Inhalt darunter wird neu gezeichnet (Tastatur bleibt offen)
+  let shopQuery = '';
+  function tile(i, kind) {
+    const label = kind === 'open' ? 'Gekauft' : 'Hinzufügen';
+    return `<button class="stile ${kind}" ${kind === 'open' ? `data-shop-tile="${i.id}"` : kind === 'recent' ? `data-shop-recent="${i.id}"` : `data-shop-new="${esc(i.name)}"`} aria-label="${esc(i.name)} – ${label}">
+      <span class="st-emoji">${kind === 'cat' || kind === 'new' ? i.emoji : shopEmoji(i)}</span>
+      <span class="st-name">${esc(i.name)}</span>
+      ${i.spec && kind === 'open' ? `<span class="st-spec">${esc(i.spec)}</span>` : ''}
+    </button>`;
+  }
   function renderShop() {
-    const all = shopItems();
-    const open = all.filter(i => !i.done).sort((a, b) => (a.from || '').localeCompare(b.from || '', 'de') || a.createdAt - b.createdAt);
-    const done = all.filter(i => i.done).sort((a, b) => b.updatedAt - a.updatedAt);
-    const row = (i) => `<li class="${i.done ? 'done' : ''}"><button class="shop-row" data-shop-toggle="${i.id}">
-        <span class="box">${i.done ? '✓' : ''}</span>
-        <span class="txt">${esc(i.name)}${i.from ? `<small>${esc(i.from)}</small>` : ''}</span></button></li>`;
-    $('#shop').innerHTML = `
-      <form class="shop-add" data-shop-form>
-        <input class="input" id="shop-input" placeholder="Was fehlt noch?" autocomplete="off" enterkeyhint="done">
-        <button class="btn btn-primary" type="submit" aria-label="Hinzufügen">+</button>
-      </form>
-      ${open.length ? `<ul class="shop-list">${open.map(row).join('')}</ul>` :
-        `<div class="empty"><div class="big">🛒</div><p>Alles da! Zutaten kommen über das Rezept eines Gerichts oder oben von Hand dazu.</p></div>`}
-      ${done.length ? `<h3 class="shop-h">Erledigt</h3><ul class="shop-list">${done.map(row).join('')}</ul>
-        <button class="btn btn-soft" data-shop-clear style="width:100%;margin-top:12px">Erledigte entfernen</button>` : ''}`;
+    const root = $('#shop');
+    if (!$('#shop-input', root)) {
+      root.innerHTML = `
+        <form class="shop-search" data-shop-form>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          <input id="shop-input" placeholder="Was brauchen wir?" autocomplete="off" enterkeyhint="done" autocapitalize="sentences">
+          <button type="button" class="clear" data-shop-clear-q aria-label="Eingabe löschen" hidden>×</button>
+        </form>
+        <div id="shop-body"></div>`;
+      $('#shop-input').addEventListener('input', (e) => { shopQuery = e.target.value; renderShopBody(); });
+      $('#shop-input').value = shopQuery;
+    }
+    renderShopBody();
+  }
+  function renderShopBody() {
+    const body = $('#shop-body'); if (!body) return;
+    $('[data-shop-clear-q]').hidden = !shopQuery;
+    const q = norm(shopQuery);
+    if (q) {
+      // Vorschläge: eigener Eintrag + Katalog + Zuletzt verwendet
+      const seen = new Set();
+      const sugg = [];
+      const push = (o) => { const k = norm(o.name); if (!seen.has(k)) { seen.add(k); sugg.push(o); } };
+      shopItems().filter(i => norm(i.name).includes(q)).forEach(i => push({ name: i.name, emoji: shopEmoji(i), onList: !i.done }));
+      CATALOG.filter(c => norm(c.name).includes(q)).forEach(c => push({ name: c.name, emoji: c.emoji }));
+      const exact = sugg.some(o => norm(o.name) === q);
+      const typed = cap(shopQuery.trim());
+      body.innerHTML = `
+        <div class="sgrid">
+          ${exact ? '' : tile({ name: typed, emoji: lookup(typed).emoji }, 'new')}
+          ${sugg.slice(0, 23).map(o => o.onList
+            ? `<div class="stile open dim"><span class="st-emoji">${o.emoji}</span><span class="st-name">${esc(o.name)}</span><span class="st-spec">steht drauf</span></div>`
+            : tile(o, 'new')).join('')}
+        </div>
+        <p class="note center">Tippen zum Hinzufügen – mehrere mit Komma trennen und Enter.</p>`;
+      return;
+    }
+    const open = shopOpen();
+    const groups = SHOP_CATS.map(c => [c, open.filter(i => shopCat(i) === c).sort((a, b) => a.name.localeCompare(b.name, 'de'))]).filter(([, l]) => l.length);
+    const recent = shopItems().filter(i => i.done).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 24);
+    body.innerHTML = `
+      ${open.length ? groups.map(([c, l]) => `<h3 class="shop-h">${c}</h3><div class="sgrid">${l.map(i => tile(i, 'open')).join('')}</div>`).join('')
+        : `<div class="empty"><div class="big">🎉</div><p>Alles da! Oben eintippen, was fehlt – oder Zutaten über ein Rezept übernehmen.</p></div>`}
+      ${recent.length ? `<h3 class="shop-h muted">Zuletzt verwendet</h3><div class="sgrid">${recent.map(i => tile(i, 'recent')).join('')}</div>` : ''}
+      <details class="browse"><summary>Alle Artikel durchstöbern</summary>
+        ${SHOP_CATS.slice(0, -1).map(c => `<h3 class="shop-h muted">${c}</h3><div class="sgrid">${
+          CATALOG.filter(x => x.cat === c && !(findShop(x.name) && !findShop(x.name).done)).map(x => tile(x, 'cat')).join('')}</div>`).join('')}
+      </details>
+      ${open.length ? '<p class="note center">Antippen = gekauft · lange drücken = Menge ändern</p>' : ''}`;
   }
   function updateShopBadge() {
     const n = shopOpenCount(), b = $('#shop-badge');
     if (b) { b.textContent = n; b.hidden = !n; }
   }
+
+  // Lange drücken auf eine Kachel → bearbeiten
+  let lpTimer = null, lpFired = false;
+  document.addEventListener('pointerdown', (e) => {
+    const t = e.target.closest('[data-shop-tile], [data-shop-recent]'); if (!t) return;
+    lpFired = false; clearTimeout(lpTimer);
+    lpTimer = setTimeout(() => { lpFired = true; buzz(15); openShopEdit(t.dataset.shopTile || t.dataset.shopRecent); }, 480);
+  });
+  ['pointerup', 'pointercancel', 'pointerleave', 'scroll'].forEach(ev => document.addEventListener(ev, () => clearTimeout(lpTimer), true));
+  document.addEventListener('contextmenu', (e) => { if (e.target.closest('.stile')) e.preventDefault(); });
 
   function saveDraft() {
     pullForm();
@@ -1135,9 +1315,12 @@
   }
 
   let toastTimer;
-  function toast(msg) {
-    const t = $('#toast'); t.textContent = msg; t.classList.add('show');
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+  function toast(msg, action) {
+    const t = $('#toast');
+    t.innerHTML = esc(msg) + (action ? ` <button id="toast-action">${esc(action)}</button>` : '');
+    t.classList.toggle('has-action', !!action);
+    t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), action ? 4000 : 2400);
   }
 
   // ---------- Supabase-Sync ----------
@@ -1317,7 +1500,7 @@
     } finally {
       syncState.busy = false;
       // Kartenstapel nur neu zeichnen, wenn sich etwas geändert hat (sonst springt die Karte unter dem Finger)
-      if (!draft && (state.view !== 'today' || changed)) renderAll();
+      if (!draft && (changed || state.view === 'more')) renderAll();
     }
   }
 
@@ -1369,6 +1552,9 @@
       if (ds.shopFrom) return openShopAdd(ds.shopFrom);
       if ('shopConfirm' in ds) return confirmShopAdd();
       if ('detailBack' in ds) return openDetail(detailId);
+      if ('shopSave' in ds) return saveShopEdit();
+      if ('shopBuySheet' in ds) { const id = detailId; closeSheet(); return buyShop(id); }
+      if ('shopDelete' in ds) { removeItem(detailId); save(); closeSheet(); renderShop(); updateShopBadge(); return toast('Entfernt'); }
       if ('reset' in ds) {
         state.filter[state.mode] = defaultFilter(state.mode);
         resetDeck(); return renderFilterSheet();
@@ -1427,15 +1613,17 @@
     if (t.id === 'fab') return openEditor(state.listKind);
     if (ds.edit) return openEditor(null, ds.edit);
     if (ds.detail) return openDetail(ds.detail);
-    if (ds.shopToggle) {
-      const it = byId(ds.shopToggle); if (!it) return;
-      it.done = !it.done; it.updatedAt = now(); markDirty(it.id); save(); buzz(8);
-      renderShop(); return updateShopBadge();
+    // Einkaufsliste
+    if (lpFired && t.closest('.stile')) { lpFired = false; return; }   // war ein langes Drücken
+    if (ds.shopTile) return buyShop(ds.shopTile, t);
+    if (ds.shopRecent) { const it = byId(ds.shopRecent); if (it) { addShop(it.name); save(); buzz(8); renderShop(); updateShopBadge(); } return; }
+    if (ds.shopNew) {
+      addShop(ds.shopNew); save(); buzz(8);
+      shopQuery = ''; $('#shop-input').value = ''; renderShop(); updateShopBadge();
+      return toast(`${ds.shopNew} hinzugefügt`);
     }
-    if ('shopClear' in ds) {
-      shopItems().filter(i => i.done).forEach(i => removeItem(i.id));
-      save(); renderShop(); return toast('Erledigte entfernt');
-    }
+    if ('shopClearQ' in ds) { shopQuery = ''; $('#shop-input').value = ''; $('#shop-input').focus(); return renderShopBody(); }
+    if (t.id === 'toast-action') { if (shopUndo) undoBuy(); return; }
 
     // Mehr
     if ('login' in ds) return doLogin();
@@ -1468,8 +1656,10 @@
     if (!e.target.matches('[data-shop-form]')) return;
     e.preventDefault();
     const inp = $('#shop-input');
-    for (const part of inp.value.split(/[,;\n]/)) addShop(part);
-    inp.value = ''; save(); renderShop(); updateShopBadge();
+    let n = 0;
+    for (const part of inp.value.split(/[,;\n]/)) for (const x of parseIngredient(part)) if (x.name && addShop(x.name, x.spec)) n++;
+    inp.value = ''; shopQuery = ''; save(); renderShop(); updateShopBadge();
+    if (n) toast(n === 1 ? 'Hinzugefügt' : `${n} Artikel hinzugefügt`);
     $('#shop-input')?.focus();
   });
   document.addEventListener('change', (e) => {
@@ -1484,6 +1674,8 @@
   });
   window.addEventListener('online', () => sync());
   setInterval(() => { if (document.visibilityState === 'visible') sync(); }, 30000);
+  // Auf der Einkaufsliste fast live: alle 4 Sekunden nachsehen, was der andere geändert hat
+  setInterval(() => { if (state.view === 'shop' && document.visibilityState === 'visible') sync(); }, 4000);
 
   // ---------- Start ----------
   load();
