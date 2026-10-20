@@ -1336,6 +1336,7 @@
     markDirty(id);
   }
   function avatar(who, cls = 'av') {
+    if (who === 'both' && members().length < 2) return '';
     if (who === 'both') return `<span class="${cls} both" title="Beide">${members().map(m => esc(m.name[0] || '?')).join('')}</span>`;
     const m = member(who); if (!m) return '';
     return `<span class="${cls} c${m.idx}" title="${esc(m.name)}">${esc((m.name[0] || '?').toUpperCase())}</span>`;
