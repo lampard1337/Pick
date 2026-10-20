@@ -232,7 +232,7 @@
 
   // ---------- State ----------
   const state = {
-    view: 'today',
+    view: 'home',
     mode: 'dish',
     listKind: 'dish',
     search: '',
@@ -619,7 +619,25 @@
   function renderMore() {
     const hist = db.history.slice(0, 12);
     const examples = db.items.filter(i => i.example).length;
+    const mine = items('member').find(x => x.email === me());
     $('#more').innerHTML = `
+      <h3 class="home-h" style="margin-top:4px">Helfer</h3>
+      <div class="all-list">
+        <button class="all-row" data-view="today"><span class="e">🍽️</span>Essen<span class="s">Kochen · Auswärts · Zufall</span></button>
+        <button class="all-row" data-view="list"><span class="e">📚</span>Sammlung<span class="s">${items('dish').length} Gerichte · ${items('place').length} Orte</span></button>
+        <button class="all-row" data-view="shop"><span class="e">🛒</span>Einkauf<span class="s">${shopOpenCount()} offen</span></button>
+        <button class="all-row" data-view="tasks"><span class="e">✅</span>Aufgaben<span class="s">${myOpenToday()} für heute</span></button>
+        ${HELPERS_SOON.map(([e, n]) => `<button class="all-row soon" data-soon="${n}"><span class="e">${e}</span>${n}<span class="s">bald</span></button>`).join('')}
+      </div>
+      ${auth ? `<div class="card-box">
+        <h2>Ihr zwei</h2>
+        <div class="who-row">${members().map(m => `<span class="who-chip">${avatar(m.email)} ${esc(m.name)}${m.email === me() ? ' <small>(ich)</small>' : ''}</span>`).join('')}</div>
+        <div class="name-row" style="margin-top:12px">
+          <input class="input" id="my-name" value="${esc(mine ? mine.name : defaultName(me()))}" placeholder="Dein Name" maxlength="20" autocomplete="given-name">
+          <button class="btn btn-soft" data-save-name style="min-height:50px">Speichern</button>
+        </div>
+        ${partner() ? '' : '<p style="margin:10px 0 0">Sobald sich dein Partner einmal anmeldet, erscheint er hier.</p>'}
+      </div>` : ''}
       ${syncCardHTML()}
       <div class="card-box">
         <h2>Zuletzt gegessen</h2>
@@ -658,7 +676,7 @@
     $('#backdrop').hidden = true;
     document.body.style.overflow = '';
     const wasFilter = sheetMode === 'filter';
-    draft = null; sheetMode = null; newPhoto = null; detailId = null;
+    draft = null; sheetMode = null; newPhoto = null; detailId = null; tdraft = null;
     if (wasFilter) renderToday();
   }
   function openEditor(kind, id) {
@@ -1129,9 +1147,9 @@
     it.done = true; it.updatedAt = now(); markDirty(it.id); save(); buzz(10);   // Menge bleibt für Rückgängig; beim erneuten Hinzufügen wird sie zurückgesetzt
     const go = () => { renderShop(); updateShopBadge(); };
     if (tile && !reduced()) { tile.classList.add('bought'); setTimeout(go, 220); } else go();
-    shopUndo = id; toast(`${it.name} gekauft`, 'Rückgängig');
+    shopUndo = id; undoFn = undoBuy; toast(`${it.name} gekauft`, 'Rückgängig');
   }
-  let shopUndo = null;
+  let shopUndo = null, undoFn = null;
   function undoBuy() {
     const it = byId(shopUndo); shopUndo = null; if (!it) return;
     it.done = false; it.updatedAt = now(); markDirty(it.id); save(); renderShop(); updateShopBadge();
@@ -1283,7 +1301,7 @@
       const map = new Map(db.items.map(i => [i.id, i]));
       let added = 0, updated = 0;
       for (const it of data.items) {
-        if (!it || !it.id || !it.name || !['dish', 'place', 'shop'].includes(it.kind)) continue;
+        if (!it || !it.id || !['dish', 'place', 'shop', 'task', 'member'].includes(it.kind) || !(it.name || it.title || it.email)) continue;
         const ex = map.get(it.id);
         if (!ex) { db.items.push(it); markDirty(it.id); added++; }
         else if ((it.updatedAt || 0) > (ex.updatedAt || 0)) { Object.assign(ex, it); markDirty(it.id); updated++; }
@@ -1298,20 +1316,268 @@
     } catch (_) { toast('Diese Datei ist keine Pick-Sicherung.'); }
   }
 
+
+  // ---------- Mitglieder (ihr zwei) ----------
+  const me = () => (auth && auth.email) || '';
+  const defaultName = (email) => cap(String(email).split('@')[0].split(/[._\-+0-9]/)[0] || 'Ich');
+  function members() {
+    const seen = new Map();
+    for (const m of items('member')) if (m.email && !seen.has(m.email)) seen.set(m.email, m);
+    if (me() && !seen.has(me())) seen.set(me(), { email: me(), name: defaultName(me()) });
+    return [...seen.values()].sort((a, b) => a.email.localeCompare(b.email)).map((m, i) => ({ ...m, idx: i % 2 }));
+  }
+  const member = (email) => members().find(m => m.email === email);
+  const partner = () => members().find(m => m.email !== me());
+  const nameOf = (email) => (member(email) || {}).name || defaultName(email || '?');
+  function ensureMember() {
+    if (!me() || items('member').some(m => m.email === me())) return;
+    const id = uid();
+    db.items.push({ id, kind: 'member', email: me(), name: defaultName(me()), createdAt: now(), updatedAt: now() });
+    markDirty(id);
+  }
+  function avatar(who, cls = 'av') {
+    if (who === 'both') return `<span class="${cls} both" title="Beide">${members().map(m => esc(m.name[0] || '?')).join('')}</span>`;
+    const m = member(who); if (!m) return '';
+    return `<span class="${cls} c${m.idx}" title="${esc(m.name)}">${esc((m.name[0] || '?').toUpperCase())}</span>`;
+  }
+
+  // ---------- Aufgaben ----------
+  const TASK_CATS = { haushalt: ['🧺', 'Haushalt'], erledigung: ['📦', 'Erledigung'], anruf: ['📞', 'Anruf'], papier: ['📄', 'Papierkram'], selbst: ['🌿', 'Für mich'], sonst: ['✨', 'Sonstiges'] };
+  const TASK_MINS = [5, 10, 15, 30, 60];
+  const MOTIVATION = ['Einfach anfangen – danach ist es weg.', 'Nur anfangen zählt schon.', 'Klein anfangen, nicht perfekt.', 'Erst das, dann Pause.', 'Timer an und los – du schaffst das.', 'In ein paar Minuten ist es erledigt.'];
+  const dayKey = (d) => new Date(d).toLocaleDateString('sv-SE');
+  const todayKey2 = () => dayKey(Date.now());
+  const addDays = (key, n) => { const d = new Date(key + 'T12:00:00'); d.setDate(d.getDate() + n); return dayKey(d); };
+  function dueLabel(key) {
+    if (!key) return '';
+    const t = todayKey2();
+    if (key < t) return 'überfällig';
+    if (key === t) return 'heute';
+    if (key === addDays(t, 1)) return 'morgen';
+    return new Date(key + 'T12:00:00').toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+  const tasks = () => items('task');
+  const isOpenToday = (t) => !t.done && (!t.due || t.due <= todayKey2());
+  const forMe = (t) => !t.who || t.who === 'both' || t.who === me();
+  const tview = { mode: 'next', skip: new Set(), timer: null };
+  function nextQueue() {
+    const t0 = todayKey2();
+    const list = tasks().filter(isOpenToday).sort((a, b) =>
+      (forMe(b) - forMe(a)) || ((a.due && a.due < t0 ? 0 : 1) - (b.due && b.due < t0 ? 0 : 1)) ||
+      ((a.due ? 0 : 1) - (b.due ? 0 : 1)) || ((a.mins || 15) - (b.mins || 15)) || (a.createdAt - b.createdAt));
+    let q = list.filter(t => !tview.skip.has(t.id));
+    if (!q.length && list.length) { tview.skip.clear(); q = list; }
+    return q;
+  }
+  const myOpenToday = () => tasks().filter(t => isOpenToday(t) && forMe(t)).length;
+  function taskMeta(t) {
+    return [t.mins ? `${t.mins} Min` : '', dueLabel(t.due) && dueLabel(t.due) !== 'heute' ? dueLabel(t.due) : '', t.repeat === 'daily' ? '🔁 täglich' : t.repeat === 'weekly' ? '🔁 wöchentlich' : ''].filter(Boolean).join(' · ');
+  }
+  function taskRow(t) {
+    return `<li class="trow ${t.done ? 'done' : ''} ${t.due && t.due < todayKey2() && !t.done ? 'late' : ''}">
+      <button class="tchk" data-task-toggle="${t.id}" aria-label="${t.done ? 'Wieder öffnen' : 'Erledigt'}">${t.done ? '✓' : ''}</button>
+      <button class="ttxt" data-task-edit="${t.id}"><span>${esc((TASK_CATS[t.cat] || TASK_CATS.sonst)[0])} ${esc(t.title)}</span>${taskMeta(t) ? `<small>${esc(taskMeta(t))}</small>` : ''}</button>
+      ${t.who ? avatar(t.who, 'mini-av') : ''}
+    </li>`;
+  }
+  function fmtTimer(ms) { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+  function renderTasks() {
+    $$('.task-seg').forEach(b => b.classList.toggle('active', b.dataset.tview === tview.mode));
+    const el = $('#tasks'), t0 = todayKey2();
+    if (tview.mode === 'next') {
+      const q = nextQueue(), t = q[0];
+      const today = tasks().filter(x => isOpenToday(x) || (x.done && x.doneAt && dayKey(x.doneAt) === t0))
+        .sort((a, b) => (a.done - b.done) || ((a.mins || 15) - (b.mins || 15)));
+      let card;
+      if (t) {
+        const cat = TASK_CATS[t.cat] || TASK_CATS.sonst;
+        const running = tview.timer && tview.timer.id === t.id;
+        let h = 0; for (const c of t.id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+        card = `<div class="tcard ${running ? 'running' : ''}" id="tcard" data-id="${t.id}">
+            <span class="kicker tk">⏱ ${t.mins || 15} Min · ${cat[0]} ${esc(cat[1])}</span>
+            ${t.who ? `<span class="tc-who">${avatar(t.who, 'av')}</span>` : ''}
+            <h2>${esc(t.title)}</h2>
+            <p id="timer-txt">${running ? `⏱ noch ${fmtTimer(tview.timer.end - Date.now())}` : esc(MOTIVATION[h % MOTIVATION.length])}</p>
+          </div>
+          <div class="controls tctrl">
+            <button class="round" data-task-skip aria-label="Später">↷</button>
+            <button class="round yes" data-task-done aria-label="Erledigt"><svg viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:3.4"><path d="M5 12.5l4.5 4.5L19 7.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button class="round ${running ? 'on' : ''}" data-task-timer aria-label="${running ? 'Timer stoppen' : 'Timer starten'}">⏱</button>
+          </div>
+          ${q.length > 1 ? `<p class="note center">Danach noch ${q.length - 1} für heute</p>` : ''}`;
+      } else {
+        card = `<div class="tcard empty"><div class="big">🎉</div><h2>${tasks().length ? 'Für heute alles erledigt!' : 'Noch keine Aufgaben'}</h2>
+          <p>${tasks().length ? 'Gönnt euch eine Pause.' : 'Tippt oben auf +, um die erste anzulegen.'}</p></div>
+          <div class="controls"><button class="btn btn-primary" data-task-new>Aufgabe anlegen</button></div>`;
+      }
+      el.innerHTML = card + (today.length ? `<h3 class="home-h">Heute</h3><ul class="tlist">${today.map(taskRow).join('')}</ul>` : '');
+      return;
+    }
+    if (tview.mode === 'all') {
+      const open = tasks().filter(x => !x.done);
+      const groups = [
+        ['Überfällig', open.filter(x => x.due && x.due < t0)],
+        ['Heute', open.filter(x => x.due === t0)],
+        ['Morgen', open.filter(x => x.due === addDays(t0, 1))],
+        ['Später', open.filter(x => x.due && x.due > addDays(t0, 1)).sort((a, b) => a.due.localeCompare(b.due))],
+        ['Ohne Datum', open.filter(x => !x.due)]
+      ].filter(([, l]) => l.length);
+      el.innerHTML = groups.length ? groups.map(([n, l]) => `<h3 class="home-h">${n}</h3><ul class="tlist">${l.map(taskRow).join('')}</ul>`).join('')
+        : `<div class="tcard empty"><div class="big">🗒️</div><h2>Nichts offen</h2><p>Neue Aufgaben über das + oben.</p></div>`;
+      return;
+    }
+    const done = tasks().filter(x => x.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0)).slice(0, 40);
+    el.innerHTML = done.length ? `<ul class="tlist">${done.map(taskRow).join('')}</ul>`
+      : `<div class="tcard empty"><div class="big">💪</div><h2>Noch nichts erledigt</h2><p>Hier sammelt sich, was ihr geschafft habt.</p></div>`;
+  }
+  function completeTask(id, fromCard) {
+    const t = byId(id); if (!t) return;
+    const before = { done: t.done, doneAt: t.doneAt, due: t.due };
+    if (tview.timer && tview.timer.id === id) tview.timer = null;
+    if (t.repeat && t.repeat !== 'none') {
+      const base = t.due && t.due > todayKey2() ? t.due : todayKey2();
+      t.due = addDays(base, t.repeat === 'daily' ? 1 : 7); t.lastDone = now();
+      toast(`Erledigt! 🎉 Wieder dran: ${dueLabel(t.due)}`, 'Rückgängig');
+    } else {
+      t.done = true; t.doneAt = now();
+      toast('Erledigt! 🎉', 'Rückgängig');
+    }
+    undoFn = () => { Object.assign(t, before); t.updatedAt = now(); markDirty(t.id); save(); renderTasks(); updateBadges(); };
+    t.updatedAt = now(); markDirty(t.id); save(); buzz([20, 60, 20]);
+    const card = fromCard && $('#tcard');
+    const go = () => { renderTasks(); updateBadges(); };
+    if (card && !reduced()) { card.classList.add('fly-done'); setTimeout(go, 280); } else go();
+  }
+  function toggleTask(id) {
+    const t = byId(id); if (!t) return;
+    if (!t.done) return completeTask(id, false);
+    t.done = false; t.doneAt = null; t.updatedAt = now(); markDirty(t.id); save(); renderTasks(); updateBadges();
+  }
+  // Timer
+  setInterval(() => {
+    if (!tview.timer) return;
+    const left = tview.timer.end - Date.now();
+    const el = $('#timer-txt');
+    if (el && $('#tcard')?.dataset.id === tview.timer.id) el.textContent = `⏱ noch ${fmtTimer(left)}`;
+    if (left <= 0) {
+      tview.timer = null; buzz([200, 100, 200, 100, 300]);
+      toast('⏱ Zeit ist um – geschafft?');
+      if (state.view === 'tasks') renderTasks();
+    }
+  }, 1000);
+
+  // Aufgabe anlegen / bearbeiten
+  let tdraft = null;
+  function openTaskEditor(id) {
+    const ex = id ? byId(id) : null;
+    tdraft = ex ? { ...ex } : { id: null, title: '', mins: 10, cat: 'haushalt', who: 'both', due: todayKey2(), repeat: 'none' };
+    sheetMode = 'task'; renderTaskSheet(); openSheet();
+    if (!ex) setTimeout(() => $('#td-title')?.focus(), 250);
+  }
+  function renderTaskSheet() {
+    const d = tdraft, t0 = todayKey2(), p = partner();
+    const chip = (attr, val, label, on) => `<button type="button" class="chip ${on ? 'on' : ''}" ${attr}="${val}">${label}</button>`;
+    const whenSel = !d.due ? 'none' : d.due === t0 ? 'today' : d.due === addDays(t0, 1) ? 'tomorrow' : 'date';
+    $('#sheet').innerHTML = `
+      <div class="grabber"></div>
+      <h2 id="sheet-title">${d.id ? 'Aufgabe bearbeiten' : 'Neue Aufgabe'}</h2>
+      <div class="field"><label for="td-title">Was ist zu tun?</label>
+        <input class="input" id="td-title" value="${esc(d.title)}" placeholder="z. B. Wäsche aufhängen" maxlength="80" autocomplete="off" enterkeyhint="done"></div>
+      <div class="field"><span class="lbl">Wie lange ungefähr?</span><div class="chips">${TASK_MINS.map(m => chip('data-td-mins', m, `${m} Min`, d.mins === m)).join('')}</div></div>
+      <div class="field"><span class="lbl">Art</span><div class="chips">${Object.entries(TASK_CATS).map(([k, [e, n]]) => chip('data-td-cat', k, `${e} ${n}`, d.cat === k)).join('')}</div></div>
+      <div class="field"><span class="lbl">Wer?</span><div class="chips">
+        ${chip('data-td-who', me(), `${esc(nameOf(me()))} (ich)`, d.who === me())}
+        ${p ? chip('data-td-who', p.email, esc(p.name), d.who === p.email) : ''}
+        ${chip('data-td-who', 'both', 'Beide', d.who === 'both' || !d.who)}
+      </div>${p ? '' : '<p class="note" style="margin-top:8px">Sobald sich dein Partner einmal anmeldet, kannst du Aufgaben auch direkt zuweisen.</p>'}</div>
+      <div class="field"><span class="lbl">Wann?</span><div class="chips">
+        ${chip('data-td-when', 'today', 'Heute', whenSel === 'today')}${chip('data-td-when', 'tomorrow', 'Morgen', whenSel === 'tomorrow')}
+        ${chip('data-td-when', 'none', 'Irgendwann', whenSel === 'none')}
+        <input type="date" class="input date-in ${whenSel === 'date' ? 'on' : ''}" id="td-date" value="${whenSel === 'date' ? d.due : ''}" min="${t0}" aria-label="Datum wählen">
+      </div></div>
+      <div class="field"><span class="lbl">Wiederholen</span><div class="chips">
+        ${chip('data-td-rep', 'none', 'Nein', !d.repeat || d.repeat === 'none')}${chip('data-td-rep', 'daily', 'Täglich', d.repeat === 'daily')}${chip('data-td-rep', 'weekly', 'Wöchentlich', d.repeat === 'weekly')}
+      </div></div>
+      <div class="sheet-actions">
+        <button class="btn btn-primary" data-td-save>Speichern</button>
+        <button class="btn btn-soft" data-close>Abbrechen</button>
+        ${d.id ? `<button class="btn btn-danger" data-td-delete>${d._confirm ? 'Wirklich löschen?' : 'Löschen'}</button>` : ''}
+      </div>`;
+  }
+  function pullTask() { const v = $('#td-title'); if (v) tdraft.title = v.value; const dt = $('#td-date'); if (dt && dt.value) tdraft.due = dt.value; }
+  function rerenderTask() { const st = $('#sheet').scrollTop; renderTaskSheet(); $('#sheet').scrollTop = st; }
+  function saveTask() {
+    pullTask();
+    const title = tdraft.title.trim();
+    if (!title) { toast('Was ist denn zu tun?'); $('#td-title')?.focus(); return; }
+    const data = { title, mins: tdraft.mins, cat: tdraft.cat, who: tdraft.who || 'both', due: tdraft.due || '', repeat: tdraft.repeat || 'none', updatedAt: now() };
+    if (tdraft.id) { Object.assign(byId(tdraft.id), data); markDirty(tdraft.id); toast('Gespeichert'); }
+    else { const id = uid(); db.items.push({ id, kind: 'task', done: false, createdBy: me(), createdAt: now(), ...data }); markDirty(id); toast('Aufgabe angelegt'); }
+    save(); closeSheet(); renderAll();
+  }
+
+  // ---------- Startseite „Heute“ ----------
+  const HELPERS_SOON = [['📅', 'Termine', 'Gemeinsamer Kalender', 'navy'], ['🔁', 'Routinen', 'Morgens & abends', ''], ['🎉', 'Freizeit', 'Was machen wir am WE?', '']];
+  const shopSeen = () => { try { return +localStorage.getItem('pick.shopSeen') || 0; } catch (_) { return 0; } };
+  function newShopByPartner() {
+    const seen = shopSeen();
+    return shopOpen().filter(i => i.addedBy && i.addedBy !== me() && (i.updatedAt || 0) > seen).length;
+  }
+  function eatenToday() {
+    const id = state.accepted.dish || state.accepted.place || state.accepted.mix;
+    return id ? byId(id) : null;
+  }
+  function renderHome() {
+    $('#avatars').innerHTML = members().map(m => avatar(m.email)).join('');
+    const d = new Date(), h = d.getHours();
+    const two = members().length > 1;
+    const greet = (h < 11 ? 'Guten Morgen' : h < 17 ? 'Hey' : 'Guten Abend') + (two ? ' ihr zwei' : '') + ' 👋';
+    const eaten = eatenToday(), next = nextQueue()[0], nShop = shopOpenCount();
+    const time = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    let now;
+    if (h >= 16 && h < 22 && !eaten) now = { k: `Jetzt dran · ${time}`, t: 'Was essen wir heute?', b: 'Karten ziehen →', v: 'today' };
+    else if (next) now = { k: `Als Nächstes · ⏱ ${next.mins || 15} Min`, t: next.title, b: 'Los geht’s →', v: 'tasks' };
+    else if (nShop) now = { k: 'Einkauf', t: `${nShop} ${nShop === 1 ? 'Sache steht' : 'Sachen stehen'} auf der Liste`, b: 'Zur Liste →', v: 'shop' };
+    else if (!eaten) now = { k: `Jetzt · ${time}`, t: 'Alles erledigt. Was essen wir später?', b: 'Karten ziehen →', v: 'today' };
+    else now = { k: 'Heute', t: 'Alles erledigt – gönnt euch eine Pause 🎉', b: 'Zu den Aufgaben →', v: 'tasks' };
+    const p = partner(), nNew = newShopByPartner(), nTasks = myOpenToday();
+    $('#home').innerHTML = `
+      <div class="home-date">${d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+      <h1 class="home-hi">${greet}</h1>
+      <button class="now" data-view="${now.v}"><div class="k">${esc(now.k)}</div><div class="t">${esc(now.t)}</div><span class="b">${now.b}</span></button>
+      <h3 class="home-h">Eure Helfer</h3>
+      <div class="mods">
+        <button class="mod mint" data-view="today"><span class="e">🍽️</span><span><span class="n">Essen</span><span class="s">${eaten ? `Heute: ${esc(eaten.name)}` : 'Heute noch offen'}</span></span></button>
+        <button class="mod coral" data-view="shop"><span class="e">🛒</span><span><span class="n">Einkauf</span><span class="s">${nShop ? `${nShop} Artikel` : 'Alles da'}${nNew && p ? ` · ${esc(p.name)} hat ${nNew} neue` : ''}</span></span></button>
+        <button class="mod" data-view="tasks"><span class="e">✅</span><span><span class="n">Aufgaben</span><span class="s">${nTasks ? `${nTasks} für heute` : 'Nichts offen'}</span></span></button>
+        ${HELPERS_SOON.map(([e, n, s, c]) => `<button class="mod ${c} soon" data-soon="${n}"><span class="soon-tag">bald</span><span class="e">${e}</span><span><span class="n">${n}</span><span class="s">${s}</span></span></button>`).join('')}
+      </div>`;
+  }
+  function updateBadges() {
+    updateShopBadge();
+    const b = $('#task-badge'); if (b) { const n = myOpenToday(); b.textContent = n; b.hidden = !n; }
+  }
+  setInterval(() => { if (state.view === 'home' && document.visibilityState === 'visible' && !sheetMode) renderHome(); }, 60000);
+
   // ---------- Navigation ----------
+  const TAB_OF = { home: 'home', today: 'today', list: 'today', shop: 'shop', tasks: 'tasks', all: 'all' };
   function show(view) {
+    if (state.view === 'shop' && view !== 'shop') { try { localStorage.setItem('pick.shopSeen', String(now())); } catch (_) {} }
     state.view = view;
     $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+    $$('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === TAB_OF[view]));
     window.scrollTo(0, 0);
     renderAll();
   }
   function renderAll() {
     if (state.flying) return;
-    if (state.view === 'today') renderToday();
+    if (state.view === 'home') renderHome();
+    else if (state.view === 'today') renderToday();
     else if (state.view === 'list') renderList();
     else if (state.view === 'shop') renderShop();
+    else if (state.view === 'tasks') renderTasks();
     else renderMore();
-    updateShopBadge();
+    updateBadges();
   }
 
   let toastTimer;
@@ -1357,7 +1623,8 @@
     try {
       setAuth(await authCall('password', { email: mail, password: pass }));
       $('#g-pass').value = '';
-      renderAll();
+      ensureMember(); save();
+      show('home');
       await sync();
       toast('Willkommen zurück!');
     } catch (e) {
@@ -1467,7 +1734,7 @@
     if (!syncConfigured || !auth || syncState.busy) return;
     if (!navigator.onLine) { if (manual) toast('Kein Internet – synchronisiere später.'); return; }
     syncState.busy = true; syncState.error = false;
-    if (state.view === 'more') renderMore();
+    if (state.view === 'all') renderMore();
     let changed = false;
     try {
       // 1. Fotos zuerst hochladen (damit das andere Handy sie findet, sobald der Eintrag kommt)
@@ -1483,6 +1750,7 @@
       const rows = await api('/rest/v1/items?select=id,kind,data,deleted,updated_at');
       changed = mergeItems(rows);
       db.syncedOnce = true;
+      ensureMember();
 
       // 3. Eigene Änderungen hochladen
       const pushIds = [...db.dirty];
@@ -1496,8 +1764,18 @@
           const t = db.tomb[id];
           return { id, kind: t.kind, data: {}, deleted: true, updated_at: new Date(t.at).toISOString() };
         });
-        await api('/rest/v1/items', { method: 'POST', headers: UPSERT, body: JSON.stringify(payload) });
-        db.dirty = db.dirty.filter(id => !pushIds.includes(id));
+        // je Bereich getrennt, damit ein Fehler (z. B. fehlendes Datenbank-Update) nicht alles blockiert
+        const byKind = {};
+        for (const row of payload) (byKind[row.kind] ||= []).push(row);
+        const failed = [];
+        let lastErr = null;
+        for (const [kind, rows2] of Object.entries(byKind)) {
+          try { await api('/rest/v1/items', { method: 'POST', headers: UPSERT, body: JSON.stringify(rows2) }); }
+          catch (e) { failed.push(...rows2.map(r => r.id)); lastErr = /check constraint|items_kind_check/i.test(e.message)
+            ? new Error('Datenbank-Update nötig – siehe Anleitung (SQL-Zeile in Supabase ausführen).') : e; }
+        }
+        db.dirty = db.dirty.filter(id => !pushIds.includes(id) || failed.includes(id));
+        if (lastErr) throw lastErr;
       }
 
       // 4. Fehlende Fotos vom Server holen
@@ -1533,7 +1811,7 @@
     } finally {
       syncState.busy = false;
       // Kartenstapel nur neu zeichnen, wenn sich etwas geändert hat (sonst springt die Karte unter dem Finger)
-      if (!draft && (changed || state.view === 'more')) renderAll();
+      if (!draft && !tdraft && (changed || state.view === 'all')) renderAll();
     }
   }
 
@@ -1575,6 +1853,7 @@
 
     // Navigation & Modus
     if (ds.view) return show(ds.view);
+    if (ds.soon) return toast(`${ds.soon} kommt bald 🙂`);
     if (ds.mode && t.closest('#view-today')) { state.mode = ds.mode; return renderToday(); }
     if (ds.kind && t.classList.contains('list-seg')) { state.listKind = ds.kind; return renderList(); }
 
@@ -1606,6 +1885,19 @@
       }
       if (ds.fType) { const f = state.filter.place; f.type = f.type === ds.fType ? null : ds.fType; resetDeck(); return renderFilterSheet(); }
       if (ds.fCuisine) { const f = state.filter.place; f.cuisines.has(ds.fCuisine) ? f.cuisines.delete(ds.fCuisine) : f.cuisines.add(ds.fCuisine); resetDeck(); return renderFilterSheet(); }
+      if (sheetMode === 'task' && tdraft) {
+        if (ds.tdMins) { pullTask(); tdraft.mins = +ds.tdMins; return rerenderTask(); }
+        if (ds.tdCat) { pullTask(); tdraft.cat = ds.tdCat; return rerenderTask(); }
+        if (ds.tdWho) { pullTask(); tdraft.who = ds.tdWho; return rerenderTask(); }
+        if (ds.tdWhen) { pullTask(); const t0 = todayKey2(); tdraft.due = ds.tdWhen === 'today' ? t0 : ds.tdWhen === 'tomorrow' ? addDays(t0, 1) : ''; const dt = $('#td-date'); if (dt) dt.value = ''; return rerenderTask(); }
+        if (ds.tdRep) { pullTask(); tdraft.repeat = ds.tdRep; return rerenderTask(); }
+        if ('tdSave' in ds) return saveTask();
+        if ('tdDelete' in ds) {
+          if (!tdraft._confirm) { pullTask(); tdraft._confirm = true; return rerenderTask(); }
+          removeItem(tdraft.id); save(); closeSheet(); renderAll(); return toast('Aufgabe gelöscht');
+        }
+        return;
+      }
       if (!draft) return;
       if ('emojiToggle' in ds) { pullForm(); return rerender(!$('.emoji-grid')); }
       if (ds.emoji) { pullForm(); draft.emoji = ds.emoji; return rerender(false); }
@@ -1646,6 +1938,26 @@
     if (t.id === 'fab') return openEditor(state.listKind);
     if (ds.edit) return openEditor(null, ds.edit);
     if (ds.detail) return openDetail(ds.detail);
+    // Aufgaben
+    if ('taskNew' in ds) return openTaskEditor(null);
+    if (ds.tview) { tview.mode = ds.tview; return renderTasks(); }
+    if ('taskSkip' in ds) { const c = $('#tcard'); if (c) { tview.skip.add(c.dataset.id); buzz(8); } return renderTasks(); }
+    if ('taskDone' in ds) { const c = $('#tcard'); if (c) completeTask(c.dataset.id, true); return; }
+    if ('taskTimer' in ds) {
+      const c = $('#tcard'); if (!c) return;
+      if (tview.timer && tview.timer.id === c.dataset.id) { tview.timer = null; toast('Timer gestoppt'); }
+      else { const tk = byId(c.dataset.id); tview.timer = { id: tk.id, end: Date.now() + (tk.mins || 15) * 60000 }; buzz(15); toast(`Timer läuft: ${tk.mins || 15} Minuten`); }
+      return renderTasks();
+    }
+    if (ds.taskToggle) return toggleTask(ds.taskToggle);
+    if (ds.taskEdit) return openTaskEditor(ds.taskEdit);
+    if ('saveName' in ds) {
+      const v = $('#my-name').value.trim(); if (!v) return;
+      ensureMember(); const m = items('member').find(x => x.email === me());
+      if (m) { m.name = cap(v); m.updatedAt = now(); markDirty(m.id); save(); toast('Name gespeichert'); renderAll(); }
+      return;
+    }
+
     // Einkaufsliste
     if (lpFired && t.closest('.stile')) { lpFired = false; return; }   // war ein langes Drücken
     if (ds.shopTile) return buyShop(ds.shopTile, t);
@@ -1656,7 +1968,7 @@
       return toast(`${ds.shopNew} hinzugefügt`);
     }
     if ('shopClearQ' in ds) { shopQuery = ''; $('#shop-input').value = ''; $('#shop-input').focus(); return renderShopBody(); }
-    if (t.id === 'toast-action') { if (shopUndo) undoBuy(); return; }
+    if (t.id === 'toast-action') { const f = undoFn; undoFn = null; if (f) f(); return; }
 
     // Mehr
     if ('login' in ds) return doLogin();
@@ -1683,6 +1995,8 @@
       pullForm(); draft.tags.pop(); rerender(false, true);
     } else if (e.key === 'Enter' && (e.target.id === 'l-pass' || e.target.id === 'l-mail')) {
       e.preventDefault(); doLogin();
+    } else if (e.key === 'Enter' && e.target.id === 'td-title') {
+      e.preventDefault(); saveTask();
     } else if (e.key === 'Escape' && sheetMode) closeSheet();
     else if (state.view === 'today' && !sheetMode && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
       fly($('.card.top'), e.key === 'ArrowRight' ? 'right' : 'left');
@@ -1699,6 +2013,7 @@
     $('#shop-input')?.focus();
   });
   document.addEventListener('change', (e) => {
+    if (e.target.id === 'td-date' && tdraft && e.target.value) { pullTask(); tdraft.due = e.target.value; rerenderTask(); }
     if (e.target.matches('[data-import]') && e.target.files[0]) importData(e.target.files[0]);
     if (e.target.matches('[data-photo]') && e.target.files[0]) onPhoto(e.target.files[0]);
   });
@@ -1717,7 +2032,7 @@
   load();
   loadDaily();
   $('#gate-form').addEventListener('submit', (e) => { e.preventDefault(); gateLogin(); });
-  if (!lockState()) { renderAll(); sync(); }
+  if (!lockState()) { ensureMember(); show('home'); sync(); }
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});

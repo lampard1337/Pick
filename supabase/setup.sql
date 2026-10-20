@@ -1,11 +1,11 @@
 -- Pick – Datenbank für den gemeinsamen Sync
 -- Einmal im Supabase SQL Editor ausführen (alles markieren → Run).
 
--- Gerichte, Orte und Einkaufsliste (kind = 'shop'). Der ganze Eintrag liegt als JSON in "data".
+-- Alle Einträge der Helfer (Gerichte, Orte, Einkauf, Aufgaben, Mitglieder). Der ganze Eintrag liegt als JSON in "data".
 -- Gelöschte Einträge bleiben als "deleted = true" stehen, damit das andere Handy davon erfährt.
 create table if not exists public.items (
   id          uuid primary key,
-  kind        text not null check (kind in ('dish', 'place', 'shop')),
+  kind        text not null,   -- dish, place, shop, task, member … (offen für neue Helfer)
   data        jsonb not null default '{}'::jsonb,
   deleted     boolean not null default false,
   updated_at  timestamptz not null
@@ -45,3 +45,6 @@ create policy "Angemeldete duerfen alles" on public.images
 
 revoke all on public.items, public.history, public.images from anon;
 grant select, insert, update, delete on public.items, public.history, public.images to authenticated;
+
+-- Für neue Helfer keine feste Liste erlaubter Arten mehr (einmal ausführen, schadet nie):
+alter table public.items drop constraint if exists items_kind_check;

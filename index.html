@@ -41,20 +41,20 @@
 
   <div class="app">
 
-    <!-- HEUTE: Kartenstapel -->
-    <section class="view active" id="view-today" aria-label="Heute">
+    <!-- HEUTE: Startseite mit allen Helfern -->
+    <section class="view page active" id="view-home" aria-label="Heute">
       <header class="bar">
         <div class="logo"><img src="images/brand/pick-symbol.png" alt="" width="30" height="30">Pick</div>
-        <button class="icon-btn" data-view="shop" aria-label="Einkaufsliste">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.5a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1L21 8H6.2"/><circle cx="9.5" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg>
-          <span class="icon-badge" id="shop-badge" hidden></span>
-        </button>
-        <button class="icon-btn" data-view="list" aria-label="Sammlung">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>
-        </button>
-        <button class="icon-btn" data-view="more" aria-label="Mehr">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-3.6 4-5.5 7-5.5s5.8 1.9 7 5.5"/></svg>
-        </button>
+        <div class="avatars" id="avatars"></div>
+      </header>
+      <div id="home"></div>
+    </section>
+
+    <!-- ESSEN: Kartenstapel -->
+    <section class="view" id="view-today" aria-label="Essen">
+      <header class="bar">
+        <h1 class="page-title">Essen</h1>
+        <button class="icon-btn" data-view="list" aria-label="Sammlung: Gerichte und Orte"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg></button>
       </header>
       <div class="seg seg-mode" role="tablist" aria-label="Was wollt ihr?">
         <button role="tab" class="seg-btn active" data-mode="dish" aria-selected="true">Kochen</button>
@@ -65,12 +65,10 @@
       <div class="controls" id="controls"></div>
     </section>
 
-    <!-- SAMMLUNG -->
+    <!-- SAMMLUNG (Unterseite von Essen) -->
     <section class="view page" id="view-list" aria-label="Sammlung">
       <header class="bar">
-        <button class="icon-btn" data-view="today" aria-label="Zurück">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
-        </button>
+        <button class="icon-btn" data-view="today" aria-label="Zurück zu Essen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
         <h1 class="page-title">Sammlung</h1>
       </header>
       <div class="seg" role="tablist" aria-label="Liste">
@@ -88,27 +86,40 @@
       </button>
     </section>
 
-    <!-- EINKAUFSLISTE -->
-    <section class="view page" id="view-shop" aria-label="Einkaufsliste">
-      <header class="bar">
-        <button class="icon-btn" data-view="today" aria-label="Zurück">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
-        </button>
-        <h1 class="page-title">Einkaufsliste</h1>
-      </header>
+    <!-- EINKAUF -->
+    <section class="view page" id="view-shop" aria-label="Einkauf">
+      <header class="bar"><h1 class="page-title">Einkauf</h1></header>
       <div id="shop"></div>
     </section>
 
-    <!-- MEHR -->
-    <section class="view page" id="view-more" aria-label="Mehr">
+    <!-- AUFGABEN -->
+    <section class="view page" id="view-tasks" aria-label="Aufgaben">
       <header class="bar">
-        <button class="icon-btn" data-view="today" aria-label="Zurück">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
-        </button>
-        <h1 class="page-title">Mehr</h1>
+        <h1 class="page-title">Aufgaben</h1>
+        <button class="icon-btn" data-task-new aria-label="Neue Aufgabe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
       </header>
+      <div class="seg" role="tablist" aria-label="Ansicht">
+        <button role="tab" class="seg-btn task-seg active" data-tview="next">Nächstes</button>
+        <button role="tab" class="seg-btn task-seg" data-tview="all">Alle</button>
+        <button role="tab" class="seg-btn task-seg" data-tview="done">Erledigt</button>
+      </div>
+      <div id="tasks"></div>
+    </section>
+
+    <!-- ALLE: alle Helfer, Profil, Einstellungen -->
+    <section class="view page" id="view-all" aria-label="Alle">
+      <header class="bar"><h1 class="page-title">Alle</h1></header>
       <div id="more"></div>
     </section>
+
+    <!-- Leiste unten -->
+    <nav class="tabbar" id="tabbar" aria-label="Bereiche">
+      <button class="tab" data-view="home"><span class="ti">🏠</span>Heute</button>
+      <button class="tab" data-view="today"><span class="ti">🍽️</span>Essen</button>
+      <button class="tab" data-view="shop"><span class="ti">🛒</span>Einkauf<span class="tab-badge" id="shop-badge" hidden></span></button>
+      <button class="tab" data-view="tasks"><span class="ti">✅</span>Aufgaben<span class="tab-badge" id="task-badge" hidden></span></button>
+      <button class="tab" data-view="all"><span class="ti">☰</span>Alle</button>
+    </nav>
   </div>
 
   <div class="backdrop" id="backdrop" hidden>

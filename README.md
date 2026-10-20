@@ -47,12 +47,13 @@ Wer sich zuerst anmeldet, lädt seine Einträge hoch. Beim zweiten Handy werden 
 automatisch verworfen, wenn auf dem Server schon Daten liegen.
 
 ## Was die App kann
-- **Kochen / Auswärts / 🎲 Zufall** als Kartenstapel – rechts = machen wir, links = nö (max. 2× am Tag)
-- **Karte antippen** öffnet die Details: beim Gericht Zutaten und Zubereitung, beim Restaurant Adresse,
-  Karte, Öffnungszeiten, Ruhetage, Anrufen und „In Google Maps öffnen“
-- **Rezept von ChatGPT**: im Gericht „Von ChatGPT holen“ → Antwort kopieren → „Antwort einfügen“
-- **Einkaufsliste** (Einkaufswagen oben): Zutaten aus dem Rezept übernehmen, abhaken – auf beiden Handys gleich
-- Orte mit Ruhetag tauchen an diesem Tag nicht im Stapel auf
+- **Heute**: Startseite mit „Jetzt dran“ (je nach Uhrzeit Essen, nächste Aufgabe oder Einkauf) und allen Helfern als Kacheln
+- **Essen**: Kochen / Auswärts / 🎲 Zufall als Kartenstapel – rechts = machen wir, links = nö (max. 2× am Tag);
+  Karte antippen zeigt Rezept bzw. Adresse, Karte und Öffnungszeiten
+- **Einkauf**: gemeinsame Liste im Bring-Stil, Zutaten direkt aus Rezepten übernehmen
+- **Aufgaben**: immer eine Karte „als Nächstes“ mit Erledigt / Später / Timer, Zuweisung an euch, Wiederholung
+- **Alle**: alle Helfer, eure Namen, Sync, Sicherung
+- Termine, Routinen und Freizeit sind als „bald“ vorgemerkt
 
 ## Wie der Sync funktioniert
 - Alles wird zuerst lokal gespeichert, die App funktioniert also auch offline.
