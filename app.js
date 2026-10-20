@@ -1629,7 +1629,7 @@
       toast('Willkommen zurück!');
     } catch (e) {
       err.textContent = /invalid/i.test(e.message) ? 'E-Mail oder Passwort stimmt nicht.'
-        : /Failed to fetch|NetworkError|Load failed/i.test(e.message) ? 'Keine Verbindung – bist du online?' : e.message;
+        : /Failed to fetch|NetworkError|Load failed/i.test(e.message) ? `Keine Verbindung zu ${SB_URL.replace(/^https?:\/\//, '')} – bist du online? (${e.message})` : e.message;
       err.hidden = false;
     } finally { btn.disabled = false; btn.textContent = 'Anmelden'; }
   }
