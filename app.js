@@ -1342,6 +1342,39 @@
       email: (j.user && j.user.email) || (auth && auth.email) || ''
     } : null;
     try { auth ? localStorage.setItem(AUTH_KEY, JSON.stringify(auth)) : localStorage.removeItem(AUTH_KEY); } catch (_) {}
+    lockState();
+  }
+  // Ohne Anmeldung nur die Startseite zeigen (gilt nur, wenn Supabase eingerichtet ist)
+  function lockState() {
+    const locked = syncConfigured && !auth;
+    document.body.classList.toggle('locked', locked);
+    return locked;
+  }
+  async function gateLogin() {
+    const mail = $('#g-mail').value.trim(), pass = $('#g-pass').value, err = $('#g-err'), btn = $('#g-btn');
+    if (!mail || !pass) return;
+    err.hidden = true; btn.disabled = true; btn.textContent = 'Melde an …';
+    try {
+      setAuth(await authCall('password', { email: mail, password: pass }));
+      $('#g-pass').value = '';
+      renderAll();
+      await sync();
+      toast('Willkommen zurück!');
+    } catch (e) {
+      err.textContent = /invalid/i.test(e.message) ? 'E-Mail oder Passwort stimmt nicht.'
+        : /Failed to fetch|NetworkError|Load failed/i.test(e.message) ? 'Keine Verbindung – bist du online?' : e.message;
+      err.hidden = false;
+    } finally { btn.disabled = false; btn.textContent = 'Anmelden'; }
+  }
+  // Abmelden: erst alles hochladen, dann die lokale Kopie auf diesem Handy löschen
+  async function logout() {
+    try { await sync(); } catch (_) {}
+    const left = (db.dirty.length || db.dirtyHist.length || db.dirtyImg.length);
+    if (left && !confirm('Ein paar Änderungen sind noch nicht hochgeladen und gehen verloren. Trotzdem abmelden?')) return;
+    for (const k of [STORE_KEY, DAILY_KEY, 'hunger.lastSync', 'pick.swiped']) { try { localStorage.removeItem(k); } catch (_) {} }
+    try { indexedDB.deleteDatabase('pick-images'); } catch (_) {}
+    setAuth(null);
+    location.reload();
   }
   async function authCall(grant, body) {
     const res = await fetch(`${SB_URL}/auth/v1/token?grant_type=${grant}`, {
@@ -1627,7 +1660,10 @@
 
     // Mehr
     if ('login' in ds) return doLogin();
-    if ('logout' in ds) { setAuth(null); syncState.msg = ''; renderMore(); return toast('Abgemeldet – die Daten bleiben auf dem Handy.'); }
+    if ('logout' in ds) {
+      if (t.dataset.armed) return logout();
+      t.dataset.armed = '1'; t.textContent = 'Wirklich abmelden?'; return;
+    }
     if ('syncNow' in ds) return sync(true);
     if ('export' in ds) return exportData();
     if ('clearExamples' in ds) {
@@ -1680,8 +1716,8 @@
   // ---------- Start ----------
   load();
   loadDaily();
-  renderAll();
-  sync();
+  $('#gate-form').addEventListener('submit', (e) => { e.preventDefault(); gateLogin(); });
+  if (!lockState()) { renderAll(); sync(); }
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});

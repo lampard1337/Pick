@@ -19,7 +19,25 @@
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body data-mode="dish">
+<body data-mode="dish" class="locked">
+  <!-- STARTSEITE: sichtbar, solange niemand angemeldet ist -->
+  <section class="gate" id="gate" aria-label="Anmelden">
+    <div class="gate-fan" aria-hidden="true">
+      <div class="gf gf1" style="background-image:url(images/seed/curry.jpg)"></div>
+      <div class="gf gf2" style="background-image:url(images/seed/pfannkuchen.jpg)"></div>
+      <div class="gf gf3" style="background-image:url(images/seed/bolognese.jpg)"><span class="gf-stamp">JA!</span></div>
+    </div>
+    <h1 class="gate-logo">Pick</h1>
+    <p class="gate-sub">Was essen wir heute? Unsere Lieblinge, eine Entscheidung.</p>
+    <form class="gate-form" id="gate-form" autocomplete="on">
+      <input class="input" id="g-mail" name="email" type="email" inputmode="email" autocomplete="username" placeholder="E-Mail" required>
+      <input class="input" id="g-pass" name="password" type="password" autocomplete="current-password" placeholder="Passwort" required>
+      <p class="gate-err" id="g-err" role="alert" hidden></p>
+      <button class="btn btn-primary" id="g-btn" type="submit">Anmelden</button>
+    </form>
+    <p class="gate-foot">Private App – Zugang nur für uns zwei.</p>
+  </section>
+
   <div class="app">
 
     <!-- HEUTE: Kartenstapel -->

@@ -40,7 +40,8 @@ Nach ca. 1 Minute läuft die App unter `https://nmekow.github.io/pwa-app/`.
 ### 7. Aufs Handy holen und anmelden
 - **iPhone:** Link in **Safari** öffnen → Teilen-Symbol → **Zum Home-Bildschirm**.
 - **Android:** Link in **Chrome** öffnen → Menü ⋮ → **App installieren**.
-- In der App unter **Mehr → Gemeinsame Sammlung** mit E-Mail und Passwort anmelden.
+- Beim ersten Öffnen erscheint die Startseite: mit einem eurer zwei Zugänge anmelden. Die Anmeldung bleibt gespeichert.
+- Ohne Anmeldung sieht niemand die App – nur die Startseite.
 
 Wer sich zuerst anmeldet, lädt seine Einträge hoch. Beim zweiten Handy werden die Beispiel-Einträge
 automatisch verworfen, wenn auf dem Server schon Daten liegen.
