@@ -516,3 +516,9 @@ body:not(.locked) .gate { display: none; }
 
 .toast { width: max-content; max-width: calc(100vw - 32px); text-align: center; }
 .toast.has-action { text-align: left; }
+
+/* ---------- iPhone-Statusleiste (Uhrzeit, Akku) ----------
+   Die App liegt randlos unter der Statusleiste; dieser dunkle Glasstreifen hält Uhrzeit und Akku lesbar. */
+.status-shade { position: fixed; top: 0; left: 0; right: 0; height: var(--safe-t); z-index: 45; pointer-events: none;
+  background: rgba(4, 28, 69, .9); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); }
+body.locked .status-shade { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
