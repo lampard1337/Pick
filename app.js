@@ -19,9 +19,9 @@
   const MIX_KINDS = { dish: '🍳 Selbst kochen', restaurant: '🍽️ Restaurant', delivery: '🛵 Lieferdienst' };
   const MIX_DEFAULT = ['dish', 'restaurant'];
   const WEEKDAYS = [[1, 'Mo'], [2, 'Di'], [3, 'Mi'], [4, 'Do'], [5, 'Fr'], [6, 'Sa'], [0, 'So']];   // JS: 0 = Sonntag
-  const GRADIENTS = [
-    ['#FF7A45', '#FF3D6E'], ['#7B61FF', '#C04CFF'], ['#00B39F', '#14D18C'], ['#FFB020', '#FF6A1A'],
-    ['#2F80ED', '#38C6F4'], ['#E8466B', '#9B2FAE'], ['#F25F3A', '#C2185B'], ['#3D5AFE', '#7C4DFF']
+  const GRADIENTS = [   // Kartenfarben ohne Foto – abgeleitet aus dem Logo
+    ['#7AF0D7', '#16C5E7'], ['#FF9F8A', '#FF6B6B'], ['#1E5AB1', '#0B3F87'], ['#16C5E7', '#1E5AB1'],
+    ['#FFD9CB', '#FF7C6C'], ['#4FD8C8', '#0FA3C9'], ['#2B6CC4', '#062A63'], ['#FF8E7B', '#E5534B']
   ];
   const ICON_X = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
   const ICON_HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.2 3 4.5 6.6 4.5c2.1 0 3.6 1.2 4.4 2.5.8-1.3 2.3-2.5 4.4-2.5 3.6 0 5.7 3.7 4.2 7.2C19.5 16.4 12 21 12 21z"/></svg>';

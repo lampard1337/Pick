@@ -1,14 +1,14 @@
 {
-  "name": "Pick – Was essen wir heute?",
+  "name": "Pick – Weniger grübeln. Mehr machen.",
   "short_name": "Pick",
-  "description": "Eure Lieblingsgerichte und -orte – und die App entscheidet.",
+  "description": "Unser kleiner Helfer für alles, was den Kopf voll macht.",
   "lang": "de",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F2EFFF",
-  "theme_color": "#F2EFFF",
+  "background_color": "#041C45",
+  "theme_color": "#041C45",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },

@@ -1,4 +1,4 @@
-# Pick – Was essen wir heute?
+# Pick – Weniger grübeln. Mehr machen.
 
 Private PWA für iPhone und Android: eure Lieblingsgerichte, Restaurants und Lieferdienste
 als Karten mit Fotos. Nach rechts wischen = machen wir, nach links = nö. Mit Supabase habt ihr auf beiden Handys
