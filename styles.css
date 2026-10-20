@@ -54,7 +54,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 
 /* ---------- Header ---------- */
 .bar { display: flex; align-items: center; gap: 8px; min-height: 48px; margin-bottom: 12px; }
-.logo { font-family: var(--display); font-weight: 800; font-size: 32px; letter-spacing: -.04em; margin-right: auto; }
+.logo { display: flex; align-items: center; gap: 6px; font-family: var(--display); font-weight: 800; font-size: 32px; letter-spacing: -.04em; margin-right: auto; }
 .page-title { font-family: var(--display); font-weight: 800; font-size: 28px; letter-spacing: -.03em; margin: 0; }
 .icon-btn {
   width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none;
@@ -371,7 +371,7 @@ body:not(.locked) .gate { display: none; }
 .gate {
   min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: calc(var(--safe-t) + 24px) 24px calc(var(--safe-b) + 24px); text-align: center;
-  background: radial-gradient(120% 70% at 50% 0%, #2A1E5C 0%, #0E0E13 60%); color: #fff;
+  background: radial-gradient(120% 70% at 50% 0%, #0B3F87 0%, #041C45 55%, #020E26 100%); color: #fff;
 }
 .gate-fan { position: relative; width: 220px; height: 230px; margin-bottom: 30px; }
 .gf { position: absolute; left: 50%; top: 0; width: 150px; height: 200px; margin-left: -75px; border-radius: 24px;
@@ -396,3 +396,8 @@ body:not(.locked) .gate { display: none; }
 .gate-err { margin: 0; color: #FF8FA3; font-weight: 600; font-size: 14px; }
 .gate-err[hidden] { display: none; }
 .gate-foot { margin-top: 22px; font-size: 13px; color: rgba(255,255,255,.45); }
+
+.logo img { width: 30px; height: 30px; margin-left: -2px; }
+.gate-logo { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.gate-logo img { width: 56px; height: 56px; }
+.gate-form .btn-primary { background: linear-gradient(135deg, #7AF0D7, #16C5E7); color: #041C45; }

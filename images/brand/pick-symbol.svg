@@ -1,0 +1,25 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cardCoral" x1="204" y1="223" x2="470" y2="654" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD9CB"/>
+      <stop offset="1" stop-color="#FF7C6C"/>
+    </linearGradient>
+    <linearGradient id="cardWhite" x1="274" y1="297" x2="515" y2="728" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DCECF1"/>
+    </linearGradient>
+    <linearGradient id="cardMint" x1="385" y1="250" x2="736" y2="842" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7AF0D7"/>
+      <stop offset="1" stop-color="#16C5E7"/>
+    </linearGradient>
+    <filter id="softShadow" x="120" y="125" width="760" height="760" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#062A63" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+  <g filter="url(#softShadow)">
+    <rect x="206" y="226" width="370" height="506" rx="72" transform="rotate(-17 206 226)" fill="url(#cardCoral)"/>
+    <rect x="284" y="290" width="334" height="460" rx="68" transform="rotate(-4 284 290)" fill="url(#cardWhite)"/>
+    <path d="M389 268C389 236 415 210 447 210H693C809 210 903 304 903 420V520C903 688 808 765 623 785L529 795C499 798 473 824 473 854V880C473 924 437 960 393 960H389C345 960 309 924 309 880V326C309 294 335 268 367 268H389Z" fill="url(#cardMint)"/>
+    <path d="M546 509L588 551C602 565 624 565 638 551L750 439" stroke="#062A63" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
