@@ -60,10 +60,10 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .view.active { display: flex; flex-direction: column; }
 #view-today {
   height: 100svh;
-  padding: calc(var(--safe-t) + 10px) 16px calc(var(--safe-b) + 100px);
+  padding: calc(var(--safe-t) + 22px) 16px calc(var(--safe-b) + 100px);
   overflow: hidden;
 }
-.page { min-height: 100svh; padding: calc(var(--safe-t) + 10px) 16px calc(var(--safe-b) + 120px); }
+.page { min-height: 100svh; padding: calc(var(--safe-t) + 22px) 16px calc(var(--safe-b) + 120px); }
 
 /* ---------- Header ---------- */
 .bar { display: flex; align-items: center; gap: 8px; min-height: 48px; margin-bottom: 12px; }
