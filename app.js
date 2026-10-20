@@ -25,7 +25,6 @@
   ];
   const ICON_X = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
   const ICON_HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.2 3 4.5 6.6 4.5c2.1 0 3.6 1.2 4.4 2.5.8-1.3 2.3-2.5 4.4-2.5 3.6 0 5.7 3.7 4.2 7.2C19.5 16.4 12 21 12 21z"/></svg>';
-  const ICON_DUEL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/><path d="M9.5 17.5 21 6V3h-3L6.5 14.5M11 19l-6-6M8 16l-4 4M5 21l-2-2"/></svg>';
   const ICON_SWAP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3l4 4-4 4M21 7H9M7 21l-4-4 4-4M3 17h12"/></svg>';
   const ICON_FILTER ='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>';
 
@@ -391,6 +390,7 @@
 
   function renderToday() {
     document.body.dataset.mode = state.mode;
+    $('#duel-start').hidden = true;   // nur beim offenen Kartenstapel
     $$('#view-today .seg-mode .seg-btn').forEach(b => {
       const on = b.dataset.mode === state.mode;
       b.classList.toggle('active', on); b.setAttribute('aria-selected', on);
@@ -451,8 +451,8 @@
       <button class="round no" data-nope aria-label="Nö, noch ${left} übrig" ${left ? '' : 'disabled'}>${ICON_X}<span class="badge">${left}</span></button>
       <button class="round yes" data-yes aria-label="Machen wir">${ICON_HEART}</button>
       ${filterBtn}
-      ${d.length >= 2 ? `<button class="round duel-btn" data-duel aria-label="Pick-Duell starten">${ICON_DUEL}</button>` : ''}
       ${hint}`;
+    $('#duel-start').hidden = d.length < 2;
     const top = $('.card.top', deckEl);
     if (top && !left) top.classList.add('final');
     if (top) bindSwipe(top);

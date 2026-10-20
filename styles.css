@@ -524,8 +524,10 @@ body:not(.locked) .gate { display: none; }
 body.locked .status-shade { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
 
 /* ---------- Pick-Duell ---------- */
-.round.duel-btn { color: var(--coral); }
-.round.duel-btn svg { stroke-width: 2.2; }
+.duel-pill { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 16px; border-radius: 999px; font-weight: 800; font-size: 15px;
+  background: var(--coral-grad); color: #fff; box-shadow: 0 10px 22px -12px rgba(255,107,107,.9); transition: transform .12s; }
+.duel-pill:active { transform: scale(.94); }
+.duel-pill[hidden] { display: none; }
 .duel {
   position: fixed; inset: 0; z-index: 55; background: var(--bg); overflow-y: auto; overscroll-behavior: contain;
   display: flex; flex-direction: column; gap: 14px;
