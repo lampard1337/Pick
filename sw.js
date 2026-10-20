@@ -1,6 +1,6 @@
 // Service Worker: App-Dateien cachen, damit Pick schnell und offline startet.
 // Bei jeder Änderung an den Dateien VERSION hochzählen.
-const VERSION = 'pick-v11';
+const VERSION = 'pick-v12';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'config.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
@@ -29,7 +29,8 @@ self.addEventListener('fetch', (e) => {
   }
   if (url.origin !== location.origin) return;
   // Eigene Dateien: erst Netz (damit Updates ankommen), sonst Cache
-  e.respondWith(fetch(req).then(res => {
+  // no-cache: beim Server nachfragen, ob es eine neue Version gibt (GitHub Pages cacht sonst 10 Minuten)
+  e.respondWith(fetch(req, { cache: 'no-cache' }).then(res => {
     const copy = res.clone();
     caches.open(VERSION).then(c => c.put(req, copy));
     return res;
